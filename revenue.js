@@ -104,10 +104,30 @@ function switchRevView(v) {
   document.getElementById('rev-devdetail-view').style.display = v==='devdetail' ? '' : 'none';
   document.getElementById('rev-selfhosting-view').style.display = v==='selfhosting' ? '' : 'none';
   document.getElementById('rev-cvs-oncall-view').style.display = v==='cvs-oncall' ? '' : 'none';
-  if (v==='detail') populateRevDetailTeams();
-  if (v==='devdetail') { populateRevDevDetailTeams(); }
+  // Show/hide nav zone in unified toolbar
+  const navZone = document.getElementById('rev-nav-zone');
+  const monthZone = document.getElementById('rev-month-zone');
+  const inDetail = v==='detail' || v==='devdetail';
+  if (navZone) navZone.style.display = inDetail ? 'flex' : 'none';
+  if (monthZone) monthZone.style.display = v==='devdetail' ? 'flex' : 'none';
+  if (v==='detail') { revDetailOpen(revDetailCurrentTeam); }
+  if (v==='devdetail') { revDevDetailOpen(revDevDetailCurrentTeam); }
   if (v==='overview') renderRevOverview();
   if (v==='split') renderRevSplit();
+}
+
+// Unified nav back/prev/next — delegates to active view
+function revNavBack() {
+  if (revView === 'detail') revDetailBackToAll();
+  else if (revView === 'devdetail') revDevDetailBackToAll();
+}
+function revNavPrev() {
+  if (revView === 'detail') revDetailPrevTeam();
+  else if (revView === 'devdetail') revDevDetailPrevTeam();
+}
+function revNavNext() {
+  if (revView === 'detail') revDetailNextTeam();
+  else if (revView === 'devdetail') revDevDetailNextTeam();
 }
 
 // Calculate revenue for one developer for one month
@@ -497,22 +517,91 @@ function clickTeamRow(team) {
   switchRevView('detail');
   document.getElementById('btn-rev-overview').classList.remove('active');
   document.getElementById('btn-rev-detail').classList.add('active');
-  populateRevDetailTeams();
-  document.getElementById('rev-detail-team').value = team;
+  revDetailOpen(team);
+}
+
+function getRevDetailTeams() {
+  return ALL_TEAMS().filter(t => t !== 'Selfhosting' && t !== 'CVS Oncall' && developers.some(d => (d.assignments||[]).some(a => a.team === t)));
+}
+
+let revDetailCurrentTeam = null;
+let revDevDetailCurrentTeam = null;
+
+function revDetailOpen(team) {
+  const teams = getRevDetailTeams();
+  revDetailCurrentTeam = team || teams[0] || null;
+  const titleEl = document.getElementById('rev-detail-title');
+  const titleRow = document.getElementById('rev-detail-title-row');
+  if (titleEl) titleEl.textContent = revDetailCurrentTeam || '';
+  if (titleRow) titleRow.style.display = revDetailCurrentTeam ? '' : 'none';
   renderRevDetail();
 }
 
-function populateRevDetailTeams() {
-  const sel = document.getElementById('rev-detail-team');
-  const cur = sel.value;
-  // Selfhosting uses fixed-price view, exclude from T&M team detail
-  const teams = ALL_TEAMS().filter(t => t !== 'Selfhosting' && t !== 'CVS Oncall' && developers.some(d => (d.assignments||[]).some(a => a.team === t)));
-  sel.innerHTML = '<option value="">Select a team...</option>' +
-    teams.map(t => `<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
+function revDetailBackToAll() {
+  revDetailCurrentTeam = null;
+  const titleRow = document.getElementById('rev-detail-title-row');
+  if (titleRow) titleRow.style.display = 'none';
+  switchRevView('overview');
 }
 
+function revDetailPrevTeam() {
+  const teams = getRevDetailTeams();
+  const idx = teams.indexOf(revDetailCurrentTeam);
+  revDetailCurrentTeam = teams[(idx - 1 + teams.length) % teams.length];
+  const titleEl = document.getElementById('rev-detail-title');
+  if (titleEl) titleEl.textContent = revDetailCurrentTeam;
+  renderRevDetail();
+}
+
+function revDetailNextTeam() {
+  const teams = getRevDetailTeams();
+  const idx = teams.indexOf(revDetailCurrentTeam);
+  revDetailCurrentTeam = teams[(idx + 1) % teams.length];
+  const titleEl = document.getElementById('rev-detail-title');
+  if (titleEl) titleEl.textContent = revDetailCurrentTeam;
+  renderRevDetail();
+}
+
+function revDevDetailOpen(team) {
+  const teams = getRevDetailTeams();
+  revDevDetailCurrentTeam = team || teams[0] || null;
+  const titleEl = document.getElementById('rev-devdetail-title');
+  const titleRow = document.getElementById('rev-devdetail-title-row');
+  if (titleEl) titleEl.textContent = revDevDetailCurrentTeam || '';
+  if (titleRow) titleRow.style.display = revDevDetailCurrentTeam ? '' : 'none';
+  updateDevDetailMonthLabel();
+  if (revDevDetailCurrentTeam) renderRevDevDetail();
+}
+
+function revDevDetailBackToAll() {
+  revDevDetailCurrentTeam = null;
+  const titleRow = document.getElementById('rev-devdetail-title-row');
+  if (titleRow) titleRow.style.display = 'none';
+  switchRevView('overview');
+}
+
+function revDevDetailPrevTeam() {
+  const teams = getRevDetailTeams();
+  const idx = teams.indexOf(revDevDetailCurrentTeam);
+  revDevDetailCurrentTeam = teams[(idx - 1 + teams.length) % teams.length];
+  const titleEl = document.getElementById('rev-devdetail-title');
+  if (titleEl) titleEl.textContent = revDevDetailCurrentTeam;
+  renderRevDevDetail();
+}
+
+function revDevDetailNextTeam() {
+  const teams = getRevDetailTeams();
+  const idx = teams.indexOf(revDevDetailCurrentTeam);
+  revDevDetailCurrentTeam = teams[(idx + 1) % teams.length];
+  const titleEl = document.getElementById('rev-devdetail-title');
+  if (titleEl) titleEl.textContent = revDevDetailCurrentTeam;
+  renderRevDevDetail();
+}
+
+function populateRevDetailTeams() { /* replaced by revDetailOpen */ }
+
 function renderRevDetail() {
-  const team = document.getElementById('rev-detail-team').value;
+  const team = revDetailCurrentTeam;
   const body = document.getElementById('rev-detail-body');
   if (!team) { body.innerHTML = '<tr><td colspan="14" class="empty">Select a team above</td></tr>'; return; }
 
@@ -678,9 +767,7 @@ async function saveTeamDiscCell(discountId, month, clear) {
 function goToHoursRevenue(team, monthIdx) {
   devDetailMonth = monthIdx;
   switchRevView('devdetail');
-  populateRevDevDetailTeams();
-  document.getElementById('rev-devdetail-team').value = team;
-  renderRevDevDetail();
+  revDevDetailOpen(team);
 }
 
 function editHoursCell(devId, month, cell) {
@@ -775,37 +862,9 @@ function changeDevDetailMonth(dir) {
   renderRevDevDetail();
 }
 
-function populateRevDevDetailTeams() {
-  const sel = document.getElementById('rev-devdetail-team');
-  const cur = sel.value;
-  const teams = ALL_TEAMS().filter(t => t !== 'Selfhosting' && t !== 'CVS Oncall' && developers.some(d => (d.assignments||[]).some(a => a.team === t)));
-  sel.innerHTML = '<option value="">Select a team...</option>' +
-    teams.map(t => `<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
-  updateDevDetailMonthLabel();
-  if (cur) renderRevDevDetail();
-}
+function populateRevDevDetailTeams() { /* replaced by revDevDetailOpen */ }
 
-function changeDetailTeam(dir) {
-  const sel = document.getElementById('rev-detail-team');
-  const opts = [...sel.options].filter(o => o.value);
-  if (!opts.length) return;
-  const cur = sel.value;
-  const idx = opts.findIndex(o => o.value === cur);
-  const newIdx = idx === -1 ? 0 : Math.max(0, Math.min(opts.length - 1, idx + dir));
-  sel.value = opts[newIdx].value;
-  renderRevDetail();
-}
-
-function changeDevDetailTeam(dir) {
-  const sel = document.getElementById('rev-devdetail-team');
-  const opts = [...sel.options].filter(o => o.value);
-  if (!opts.length) return;
-  const cur = sel.value;
-  const idx = opts.findIndex(o => o.value === cur);
-  const newIdx = idx === -1 ? 0 : Math.max(0, Math.min(opts.length - 1, idx + dir));
-  sel.value = opts[newIdx].value;
-  renderRevDevDetail();
-}
+/* changeDetailTeam/changeDevDetailTeam replaced by revDetail*Team functions */
 
 function updateDevDetailMonthLabel() {
   const label = document.getElementById('rev-devdetail-month-label');
@@ -814,7 +873,7 @@ function updateDevDetailMonthLabel() {
 
 function renderRevDevDetail() {
   updateDevDetailMonthLabel();
-  const team = document.getElementById('rev-devdetail-team').value;
+  const team = revDevDetailCurrentTeam;
   const body = document.getElementById('rev-devdetail-body');
 
   if (!team) {

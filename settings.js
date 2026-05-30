@@ -1634,30 +1634,27 @@ function buildAttRow(d) {
 }
 
 function renderAttendance() {
-  const filtered = getAttFiltered();
   const body = document.getElementById('att-body');
+  const status = getAttStatusFilter();
 
-  // Rebuild team dropdown (for list layout)
-  const allTeams = [...new Set(developers.flatMap(d=>(d.assignments||[]).map(a=>a.team)).filter(Boolean))].sort();
-  const sel = document.getElementById('att-filter-team');
-  const cur = sel.value;
-  const euT = allTeams.filter(t=>EU_TEAMS.includes(t)).sort();
-  const indT = allTeams.filter(t=>IND_TEAMS.includes(t)).sort();
-  sel.innerHTML = '<option value="">All teams</option>' +
-    '<option value="__EU__">-- Europe teams --</option>' +
-    '<option value="__IND__">-- India teams --</option>' +
-    (euT.length ? '<optgroup label="Europe">'+euT.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('')+'</optgroup>' : '') +
-    (indT.length ? '<optgroup label="India">'+indT.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('')+'</optgroup>' : '');
+  if (attSelectedTeam) {
+    // ── Single-team view ────────────────────────────────────────────
+    const devs = developers.filter(d => {
+      if (status !== 'all' && d.status !== status) return false;
+      return (d.assignments||[]).some(a => a.team === attSelectedTeam);
+    }).sort((a, b) => parseInt(a.nessid||0) - parseInt(b.nessid||0));
 
-  const teamHeader = document.getElementById('att-team-header');
-  if (teamHeader) teamHeader.style.display = attLayout === 'team' ? 'none' : '';
+    if (!devs.length) { body.innerHTML = '<tr><td colspan="13" class="empty">No developers found</td></tr>'; return; }
+    body.innerHTML = devs.map(d => `<tr>
+      <td style="position:sticky;left:0;background:var(--surface);z-index:1;font-weight:500;white-space:nowrap">${d.firstname} ${d.lastname}</td>
+      ${buildAttRow(d)}
+    </tr>`).join('');
 
-  if (attLayout === 'team') {
-    // Team view — group by team, sorted by NESS ID within team
-    const status = document.getElementById('att-filter-status').value;
-    const devs = developers.filter(d => status === 'active' ? d.status === 'active' : true);
+  } else {
+    // ── All-teams view — team header row + dev rows expanded (same as rates) ──
+    const devs = developers.filter(d => status !== 'all' ? d.status === status : true);
     const teamDevs = {};
-    [...devs].sort((a,b) => parseInt(a.nessid||0) - parseInt(b.nessid||0)).forEach(d => {
+    devs.forEach(d => {
       const team = getDevCurrentTeam(d) || 'Unassigned';
       if (!teamDevs[team]) teamDevs[team] = [];
       teamDevs[team].push(d);
@@ -1666,30 +1663,22 @@ function renderAttendance() {
       ...getOrderedTeams().filter(t => teamDevs[t]),
       ...Object.keys(teamDevs).filter(t => !EU_TEAMS.includes(t) && !IND_TEAMS.includes(t) && teamDevs[t])
     ];
-    if (!orderedTeams.length) { body.innerHTML = '<tr><td colspan="14" class="empty">No developers found</td></tr>'; return; }
+    if (!orderedTeams.length) { body.innerHTML = '<tr><td colspan="13" class="empty">No developers found</td></tr>'; return; }
     body.innerHTML = orderedTeams.map(team => {
       const tDevs = teamDevs[team];
-      const teamRow = `<tr style="background:#f0f4ff;cursor:default">
-        <td colspan="14" style="font-weight:600;font-size:13px;color:var(--blue);padding:8px 12px;border-top:2px solid #dde4f5">
+      const teamRow = `<tr style="background:#f0f4ff;cursor:pointer" onclick="attSelectTeam('${team}')">
+        <td colspan="13" style="font-weight:600;font-size:13px;color:var(--blue);padding:8px 12px;border-top:2px solid #dde4f5">
           ${team}
           <span style="font-weight:400;font-size:12px;color:var(--text-2);margin-left:8px">${tDevs.length} developer${tDevs.length!==1?'s':''}</span>
+          <span style="float:right;font-size:11px;color:var(--text-3);font-weight:400">›</span>
         </td>
       </tr>`;
       const devRows = tDevs.map(d => `<tr>
         <td style="position:sticky;left:0;background:var(--surface);z-index:1;font-weight:500;white-space:nowrap">${d.firstname} ${d.lastname}</td>
-        <td style="display:none"></td>
         ${buildAttRow(d)}
       </tr>`).join('');
       return teamRow + devRows;
     }).join('');
-  } else {
-    // List view
-    if (!filtered.length) { body.innerHTML = '<tr><td colspan="14" class="empty">No developers found</td></tr>'; return; }
-    body.innerHTML = filtered.map(d => `<tr>
-      <td style="position:sticky;left:0;background:var(--surface);z-index:1;font-weight:500;white-space:nowrap">${d.firstname} ${d.lastname}</td>
-      <td style="font-size:12px;color:var(--text-2);white-space:nowrap">${getDevCurrentTeam(d)||'—'}</td>
-      ${buildAttRow(d)}
-    </tr>`).join('');
   }
 }
 

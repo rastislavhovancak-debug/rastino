@@ -68,7 +68,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .page.active{display:block}
 
 /* ── Toolbar ──────────────────────────────────────── */
-.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;min-height:40px}
 .toolbar h2{font-size:15px;font-weight:600;flex:1;letter-spacing:-0.2px;color:var(--text)}
 .toolbar input[type=text]{flex:1;min-width:200px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--surface);transition:border-color 0.15s}
 .toolbar input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,0.08)}
@@ -77,7 +77,7 @@ select:focus{outline:none;border-color:var(--blue)}
 
 /* ── View toggle (chip style) ─────────────────────── */
 .view-toggle{display:flex;gap:3px;background:var(--border-lt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px}
-.view-toggle button{border:none;border-radius:5px;padding:5px 14px;font-size:12px;cursor:pointer;background:transparent;color:var(--text-2);transition:all 0.12s;white-space:nowrap}
+.view-toggle button{border:none;border-radius:5px;padding:6px 14px;font-size:12px;cursor:pointer;background:transparent;color:var(--text-2);transition:all 0.12s;white-space:nowrap}
 .view-toggle button.active{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
 
 /* ── Stat cards ───────────────────────────────────── */
@@ -211,6 +211,7 @@ tr:hover td{background:#FAFBFC}
 
   <div class="page" id="page-developers">
     <div class="toolbar" id="dev-toolbar-all">
+      <div style="flex:1"></div>
       <div class="view-toggle">
         <button class="active" id="btn-tab-ness" onclick="switchDevTab('ness')">NESS</button>
         <button id="btn-tab-here" onclick="switchDevTab('here')">HERE</button>
@@ -225,8 +226,8 @@ tr:hover td{background:#FAFBFC}
     </div>
     <div class="toolbar" id="dev-toolbar-team" style="display:none">
       <button class="btn" onclick="devBackToAll()">← Back</button>
-      <button class="btn" onclick="devPrevTeam()" style="padding:5px 12px" title="Previous team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="btn" onclick="devNextTeam()" style="padding:5px 12px" title="Next team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" onclick="devPrevTeam()" title="Previous team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" onclick="devNextTeam()" title="Next team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div style="flex:1"></div>
       <div class="view-toggle">
         <button class="active" id="btn-tab-ness2" onclick="switchDevTab('ness')">NESS</button>
@@ -249,6 +250,7 @@ tr:hover td{background:#FAFBFC}
 
   <div class="page" id="page-rates">
     <div class="toolbar" id="rates-toolbar-all">
+      <div style="flex:1"></div>
       <select id="rates-filter-status" onchange="renderRates()">
         <option value="has_assignment">Has 2026 assignment</option>
         <option value="active">Active only</option>
@@ -271,7 +273,6 @@ tr:hover td{background:#FAFBFC}
     <div id="rates-team-title-row" style="display:none;padding:0.5rem 0 0.75rem 0">
       <span id="rates-team-title" style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px"></span>
     </div>
-    <div style="margin-bottom:0.75rem;font-size:12px;color:var(--text-2);line-height:1.6">Click any rate cell to edit. Highlighted cells indicate a rate change from the previous month.</div>
     <div class="table-wrap" style="overflow-x:auto">
       <table style="table-layout:fixed;min-width:900px" id="rates-table">
         <thead id="rates-thead">
@@ -297,8 +298,20 @@ tr:hover td{background:#FAFBFC}
   </div>
 
   <div class="page" id="page-revenue">
-    <div class="toolbar">
-      <h2 style="flex:1">Revenue 2026</h2>
+    <div class="toolbar" id="rev-toolbar">
+      <!-- Nav zone: hidden in overview/split, shown in detail/devdetail -->
+      <div id="rev-nav-zone" style="display:none;align-items:center;gap:4px">
+        <button class="btn" onclick="revNavBack()">← Back</button>
+        <button class="btn" onclick="revNavPrev()" title="Previous team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="btn" onclick="revNavNext()" title="Next team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <!-- Month nav: only visible in devdetail, inside nav zone -->
+        <div id="rev-month-zone" style="display:none;align-items:center;gap:4px;margin-left:8px;border-left:1px solid var(--border);padding-left:8px">
+          <button class="btn" onclick="changeDevDetailMonth(-1)" title="Previous month"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <span id="rev-devdetail-month-label" style="font-size:12px;font-weight:500;min-width:80px;text-align:center"></span>
+          <button class="btn" onclick="changeDevDetailMonth(1)" title="Next month"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <div style="flex:1"></div>
       <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden">
         <button id="btn-rev-eur" onclick="setRevCurrency('eur')"
           style="border:none;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;background:var(--blue);color:#fff;border-right:1px solid var(--border)">€ EUR</button>
@@ -313,43 +326,7 @@ tr:hover td{background:#FAFBFC}
       </div>
       <button class="btn" onclick="exportRevenue()">Export Excel</button>
     </div>
-    <div class="stats-row" id="rev-stats-row">
-      <div class="stat-card">
-        <div class="stat-label">YTD Revenue</div>
-        <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap">
-          <div class="stat-value" id="rev-stat-ytd" style="color:var(--blue)">—</div>
-          <div id="rev-stat-ytd-sep" style="font-size:18px;font-weight:300;color:var(--border);margin:0 10px;display:none"> / </div>
-          <div id="rev-stat-ytd-usd" style="font-size:18px;font-weight:600;letter-spacing:-0.3px;color:var(--text-3);display:none"></div>
-        </div>
-        <div class="stat-sub" id="rev-stat-ytd-sub">locked months</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Full year forecast</div>
-        <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap">
-          <div class="stat-value" id="rev-stat-total">—</div>
-          <div id="rev-stat-total-sep" style="font-size:18px;font-weight:300;color:var(--border);margin:0 10px;display:none"> / </div>
-          <div id="rev-stat-total-usd" style="font-size:18px;font-weight:600;letter-spacing:-0.3px;color:var(--text-3);display:none"></div>
-        </div>
-        <div class="stat-sub">all 12 months</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Active developers</div>
-        <div class="stat-value" id="rev-stat-devs">—</div>
-        <div class="stat-sub">with 2026 assignment</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Months locked</div>
-        <div class="stat-value" id="rev-stat-locked" style="color:var(--green)">—</div>
-        <div class="stat-sub" id="rev-stat-locked-sub">as actuals</div>
-      </div>
-    </div>
-    <div class="rev-legend">
-      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--green-lt);border:1px solid #86EFAC"></div> Actuals</div>
-      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--amber-lt);border:1px solid #FCD34D"></div> Manual</div>
-      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--blue-lt);border:1px solid var(--blue-mid)"></div> Forecast</div>
-      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--red-lt);border:1px solid #FCA5A5"></div> Manual needed</div>
-      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--border-lt);border:1px solid var(--border)"></div> No active PO</div>
-    </div>
+
 
     <div id="rev-overview-view">
       <div class="table-wrap" style="overflow-x:auto">
@@ -404,12 +381,8 @@ tr:hover td{background:#FAFBFC}
     </div>
 
     <div id="rev-detail-view" style="display:none">
-      <div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:8px">
-        <button class="btn" onclick="changeDetailTeam(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
-        <select id="rev-detail-team" onchange="renderRevDetail()" style="font-size:13px;padding:6px 10px;flex:1;max-width:280px">
-          <option value="">Select a team...</option>
-        </select>
-        <button class="btn" onclick="changeDetailTeam(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
+      <div id="rev-detail-title-row" style="display:none;padding:0.5rem 0 0.75rem 0">
+        <span id="rev-detail-title" style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px"></span>
       </div>
       <div class="table-wrap" style="overflow-x:auto">
         <table style="table-layout:fixed;min-width:900px">
@@ -437,17 +410,8 @@ tr:hover td{background:#FAFBFC}
     </div>
 
     <div id="rev-devdetail-view" style="display:none">
-      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="btn" onclick="changeDevDetailTeam(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
-        <select id="rev-devdetail-team" onchange="renderRevDevDetail()" style="font-size:13px;padding:6px 10px;max-width:280px">
-          <option value="">Select a team...</option>
-        </select>
-        <button class="btn" onclick="changeDevDetailTeam(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
-        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-          <button class="btn" onclick="changeDevDetailMonth(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
-          <span id="rev-devdetail-month-label" style="font-size:15px;font-weight:500;min-width:120px;text-align:center"></span>
-          <button class="btn" onclick="changeDevDetailMonth(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
-        </div>
+      <div id="rev-devdetail-title-row" style="display:none;padding:0.5rem 0 0.75rem 0">
+        <span id="rev-devdetail-title" style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px"></span>
       </div>
       <div class="table-wrap">
         <table style="table-layout:fixed;width:100%">
@@ -1370,21 +1334,13 @@ tr:hover td{background:#FAFBFC}
       </div>
 
   <div class="page" id="page-attendance">
-    <div class="toolbar">
-      <h2 style="flex:1">Attendance / Billable Hours 2026</h2>
+    <!-- All-teams toolbar -->
+    <div class="toolbar" id="att-toolbar-all">
+      <div style="flex:1"></div>
       <div class="view-toggle">
         <button class="active" id="btn-att-overview" onclick="switchAttTab('overview')">Overview</button>
         <button id="btn-att-bulk" onclick="switchAttTab('bulk')">Manual bulk update</button>
       </div>
-      <div class="view-toggle">
-        <button id="btn-att-list" onclick="switchAttLayout('list')">List</button>
-        <button class="active" id="btn-att-team-layout" onclick="switchAttLayout('team')">Team</button>
-      </div>
-      <select id="att-filter-team" onchange="renderAttendance()" style="font-size:13px;padding:6px 10px;display:none">
-        <option value="">All teams</option>
-        <option value="__EU__">-- Europe teams --</option>
-        <option value="__IND__">-- India teams --</option>
-      </select>
       <select id="att-filter-status" onchange="renderAttendance()" style="font-size:13px;padding:6px 10px">
         <option value="active">Active only</option>
         <option value="all">All developers</option>
@@ -1400,15 +1356,42 @@ tr:hover td{background:#FAFBFC}
       </select>
       <button class="btn btn-primary" id="btn-att-import" onclick="openAttImport()">Import CSV</button>
     </div>
+    <!-- Single-team toolbar -->
+    <div class="toolbar" id="att-toolbar-team" style="display:none">
+      <button class="btn" onclick="attBackToAll()">← Back</button>
+      <button class="btn" onclick="attPrevTeam()" title="Previous team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" onclick="attNextTeam()" title="Next team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div style="flex:1"></div>
+      <div class="view-toggle">
+        <button class="active" id="btn-att-overview2" onclick="switchAttTab('overview')">Overview</button>
+        <button id="btn-att-bulk2" onclick="switchAttTab('bulk')">Manual bulk update</button>
+      </div>
+      <select id="att-filter-status2" onchange="renderAttendance()" style="font-size:13px;padding:6px 10px">
+        <option value="active">Active only</option>
+        <option value="all">All developers</option>
+      </select>
+      <select id="att-bulk-month2" onchange="renderAttBulk()" style="font-size:13px;padding:6px 10px;display:none">
+        <option value="">Select month...</option>
+        <option value="1">January</option><option value="2">February</option>
+        <option value="3">March</option><option value="4">April</option>
+        <option value="5">May</option><option value="6">June</option>
+        <option value="7">July</option><option value="8">August</option>
+        <option value="9">September</option><option value="10">October</option>
+        <option value="11">November</option><option value="12">December</option>
+      </select>
+      <button class="btn btn-primary" id="btn-att-import2" onclick="openAttImport()">Import CSV</button>
+    </div>
+    <!-- Team title row -->
+    <div id="att-team-title-row" style="display:none;padding:0.5rem 0 0.75rem 0">
+      <span id="att-team-title" style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px"></span>
+    </div>
     <!-- Overview view -->
     <div id="att-overview-view">
-    <div style="display:flex;gap:16px;margin-bottom:0.75rem;font-size:12px;">
     <div class="table-wrap" style="overflow-x:auto">
       <table style="width:100%;table-layout:auto">
         <thead>
           <tr>
             <th style="min-width:160px;position:sticky;left:0;background:var(--bg);z-index:2;text-align:left">Developer</th>
-            <th id="att-team-header" style="min-width:100px;text-align:left">Team</th>
             <th style="text-align:center;white-space:nowrap">Jan</th>
             <th style="text-align:center;white-space:nowrap">Feb</th>
             <th style="text-align:center;white-space:nowrap">Mar</th>
