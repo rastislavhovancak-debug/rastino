@@ -1,0 +1,4 @@
+/config.json
+  X-Frame-Options: DENY
+  Access-Control-Allow-Origin: https://glittering-beignet-c21336.netlify.app
+  Cache-Control: no-store

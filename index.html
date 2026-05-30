@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<style>
+/* ── Reset & tokens ───────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#185FA5;--blue-lt:#E6F1FB;--blue-mid:#B5D4F4;
+  --green:#3B6D11;--green-lt:#EAF3DE;
+  --amber:#854F0B;--amber-lt:#FAEEDA;
+  --red:#A32D2D;--red-lt:#FCEBEB;
+  --border:#E5E7EB;--border-lt:#F3F4F6;
+  --surface:#ffffff;--bg:#f0f2f5;
+  --text:#111827;--text-2:#6B7280;--text-3:#9CA3AF;
+  --radius:10px;--radius-sm:7px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+
+/* ── Login ────────────────────────────────────────── */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.login-card{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:2.25rem 2rem;width:100%;max-width:380px;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.login-card h1{font-size:20px;font-weight:600;margin-bottom:0.2rem;letter-spacing:-0.3px}
+.login-card p{color:var(--text-2);font-size:13px;margin-bottom:1.75rem}
+.login-card label{font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:5px}
+.login-card input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;margin-bottom:14px;transition:border-color 0.15s}
+.login-card input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,0.1)}
+
+/* ── Buttons ──────────────────────────────────────── */
+.btn{padding:6px 14px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;white-space:nowrap;transition:all 0.12s;font-weight:400}
+.btn:hover{background:var(--border-lt);border-color:#D1D5DB}
+.btn.active{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:500}
+.btn-group{display:inline-flex}
+.btn-group .btn{border-radius:0}
+.btn-group .btn:first-child{border-radius:var(--radius-sm) 0 0 var(--radius-sm)}
+.btn-group .btn:last-child{border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.btn-group .btn:not(:first-child){border-left:none}
+.btn-group .btn:not(.active){background:var(--bg);color:var(--text-2)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:500}
+.btn-primary:hover{background:#0f4a85;border-color:#0f4a85}
+.btn-danger{background:var(--red-lt);color:var(--red);border-color:#FCA5A5}
+.btn-danger:hover{background:#FEE2E2}
+.btn-full{width:100%;padding:10px;font-size:13px}
+.error-msg{color:var(--red);font-size:12px;margin-top:8px}
+
+/* ── App shell ────────────────────────────────────── */
+.app{display:none;min-height:100vh;background:var(--bg)}
+
+/* ── Topbar ───────────────────────────────────────── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar-left{display:flex;align-items:center;gap:0}
+.topbar-brand{display:flex;align-items:center;gap:8px;padding-right:18px;margin-right:6px;border-right:1px solid var(--border)}
+.topbar-brand-dot{width:9px;height:9px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.topbar h1{font-size:14px;font-weight:600;letter-spacing:-0.2px;color:var(--text)}
+.topbar-user{font-size:11px;color:var(--text-3)}
+.nav{display:flex;gap:2px}
+.nav-btn{padding:5px 11px;font-size:12px;border:none;border-radius:6px;background:transparent;color:var(--text-2);cursor:pointer;transition:all 0.12s;font-weight:400}
+.nav-btn:hover{background:var(--border-lt);color:var(--text)}
+.nav-btn.active{background:var(--blue-lt);color:var(--blue);font-weight:500}
+
+/* ── Pages ────────────────────────────────────────── */
+.page{display:none;padding:1.5rem;max-width:1600px;margin:0 auto}
+.page.active{display:block}
+
+/* ── Toolbar ──────────────────────────────────────── */
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.toolbar h2{font-size:15px;font-weight:600;flex:1;letter-spacing:-0.2px;color:var(--text)}
+.toolbar input[type=text]{flex:1;min-width:200px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--surface);transition:border-color 0.15s}
+.toolbar input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,0.08)}
+select{padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer}
+select:focus{outline:none;border-color:var(--blue)}
+
+/* ── View toggle (chip style) ─────────────────────── */
+.view-toggle{display:flex;gap:3px;background:var(--border-lt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px}
+.view-toggle button{border:none;border-radius:5px;padding:5px 14px;font-size:12px;cursor:pointer;background:transparent;color:var(--text-2);transition:all 0.12s;white-space:nowrap}
+.view-toggle button.active{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+
+/* ── Stat cards ───────────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
+.stat-label{font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em}
+.stat-value{font-size:22px;font-weight:600;letter-spacing:-0.5px;color:var(--text)}
+.stat-sub{font-size:11px;color:var(--text-3);margin-top:2px}
+
+/* ── Table ────────────────────────────────────────── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+th{background:#FAFBFC;color:var(--text-2);font-weight:500;padding:9px 13px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap}
+td{padding:9px 13px;border-bottom:1px solid var(--border-lt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FAFBFC}
+
+/* ── Badges ───────────────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+.badge-active{background:var(--green-lt);color:var(--green)}
+.badge-inactive{background:var(--border-lt);color:var(--text-3)}
+.badge-team{background:var(--blue-lt);color:var(--blue);font-size:11px;padding:2px 8px;border-radius:99px}
+
+/* ── Avatars ──────────────────────────────────────── */
+.avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+.av-sk{background:var(--blue-lt);color:var(--blue)}
+.av-ro{background:#FFF7ED;color:#C2410C}
+.av-lv{background:var(--green-lt);color:var(--green)}
+.av-in{background:var(--red-lt);color:var(--red)}
+.av-other{background:var(--border-lt);color:var(--text-2)}
+.name-cell{display:flex;align-items:center;gap:10px}
+.name-sub{font-size:11px;color:var(--text-3)}
+
+/* ── States ───────────────────────────────────────── */
+.empty{text-align:center;padding:3rem 1rem;color:var(--text-3);font-size:13px}
+.loading{text-align:center;padding:3rem 1rem;color:var(--text-3);font-size:13px}
+
+/* ── Modal ────────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:14px;border:1px solid var(--border);width:100%;max-width:600px;padding:1.75rem;box-shadow:0 8px 24px rgba(0,0,0,0.12)}
+.modal h2{font-size:15px;font-weight:600;margin-bottom:1.25rem;letter-spacing:-0.2px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.04em}
+.form-group input,.form-group select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;transition:border-color 0.15s;background:var(--surface)}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,0.08)}
+.section-title{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;grid-column:1/-1;border-bottom:1px solid var(--border-lt);padding-bottom:6px;margin-top:8px}
+.wbs-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.wbs-row input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px}
+.wbs-row select{width:130px;font-size:12px;padding:6px 8px}
+.modal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border-lt)}
+.modal-footer-right{display:flex;gap:8px}
+
+/* ── Detail rows ──────────────────────────────────── */
+.detail-section{margin-bottom:1rem}
+.detail-section h3{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border-lt)}
+.detail-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border-lt)}
+.detail-row:last-child{border-bottom:none}
+.detail-row span:first-child{color:var(--text-2);min-width:45%}
+.detail-row span:last-child{text-align:right;max-width:55%;word-break:break-word;font-weight:500}
+
+/* ── Toast ────────────────────────────────────────── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#111827;color:#fff;padding:10px 18px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;opacity:0;transition:opacity 0.25s;z-index:200;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.toast.show{opacity:1}
+
+/* ── Revenue legend ───────────────────────────────── */
+.rev-legend{display:flex;gap:14px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.rev-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)}
+.rev-legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+/* ── Table total / section rows ───────────────────── */
+.tbl-section-row td{background:#FAFBFC!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-3)!important;padding:6px 13px!important;border-bottom:1px solid var(--border)!important}
+.tbl-section-row:hover td{background:#FAFBFC!important;cursor:default}
+.tbl-total td{background:#F8FAFC!important;font-weight:600!important;border-top:1px solid var(--border)!important}
+.tbl-total:hover td{background:#F8FAFC!important;cursor:default}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="login-wrap">
+  <div class="login-card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.25rem">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--blue);flex-shrink:0"></div>
+      <h1>DM</h1>
+    </div>
+    <label>Email</label>
+    <input type="email" id="login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    <label>Password</label>
+    <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-primary btn-full" onclick="doLogin()" style="margin-top:4px">Sign in</button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-brand">
+        <div class="topbar-brand-dot"></div>
+        <h1>DM</h1>
+      </div>
+      <nav class="nav">
+        <button class="nav-btn active" id="nav-home" onclick="showPage('home')">🏠</button>
+        <button class="nav-btn" id="nav-developers" onclick="showPage('developers')">Developers</button>
+        <button class="nav-btn" id="nav-rates" onclick="showPage('rates')">Rates</button>
+        <button class="nav-btn" id="nav-revenue" onclick="showPage('revenue')">Revenue</button>
+        <button class="nav-btn" id="nav-attendance" onclick="showPage('attendance')">Attendance</button>
+        <button class="nav-btn" id="nav-timesheets" onclick="showPage('timesheets')">Timesheets</button>
+        <button class="nav-btn" id="nav-grossmargin" onclick="showPage('grossmargin')">Gross Margin</button>
+        <button class="nav-btn" id="nav-costs" onclick="showPage('costs')">Costs</button>
+        <button class="nav-btn" id="nav-invoicing" onclick="showPage('invoicing')">Invoicing</button>
+        <button class="nav-btn" id="nav-po" onclick="showPage('po')">PO</button>
+        <button class="nav-btn" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-btn" id="nav-info" onclick="showPage('info')">Info</button>
+        <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">Settings</button>
+      </nav>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="topbar-user" id="user-email"></span>
+      <button class="btn" onclick="doLogout()" style="font-size:11px;padding:4px 10px;color:var(--text-2);border-color:var(--border-lt)">Sign out</button>
+    </div>
+  </div>
+
+  <div class="page active" id="page-home">
+    <div id="home-chart-container" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <div id="home-chart-inner" style="font-size:13px;color:var(--text-3)">Loading...</div>
+    </div>
+  </div>
+
+  <div class="page" id="page-developers">
+    <div class="toolbar" id="dev-toolbar-all">
+      <div class="view-toggle">
+        <button class="active" id="btn-tab-ness" onclick="switchDevTab('ness')">NESS</button>
+        <button id="btn-tab-here" onclick="switchDevTab('here')">HERE</button>
+      </div>
+      <select id="filter-status" onchange="renderDevs()">
+        <option value="active">Active only</option>
+        <option value="all">All (incl. inactive)</option>
+        <option value="inactive">Inactive only</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAdd()">+ Add developer</button>
+      <button class="btn" onclick="exportDevs()">Export Excel</button>
+    </div>
+    <div class="toolbar" id="dev-toolbar-team" style="display:none">
+      <button class="btn" onclick="devBackToAll()">← Back</button>
+      <button class="btn" onclick="devPrevTeam()" style="padding:5px 12px" title="Previous team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" onclick="devNextTeam()" style="padding:5px 12px" title="Next team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div style="flex:1"></div>
+      <div class="view-toggle">
+        <button class="active" id="btn-tab-ness2" onclick="switchDevTab('ness')">NESS</button>
+        <button id="btn-tab-here2" onclick="switchDevTab('here')">HERE</button>
+      </div>
+      <select id="filter-status2" onchange="renderDevs()">
+        <option value="active">Active only</option>
+        <option value="all">All (incl. inactive)</option>
+        <option value="inactive">Inactive only</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAdd()">+ Add developer</button>
+    </div>
+    <div id="dev-team-title-row" style="display:none;padding:0.5rem 0 0.75rem 0">
+      <span id="dev-team-title" style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px"></span>
+    </div>
+    <div class="table-wrap">
+      <table><thead id="table-head"></thead><tbody id="table-body"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="page" id="page-rates">
+    <div class="toolbar" id="rates-toolbar-all">
+      <select id="rates-filter-status" onchange="renderRates()">
+        <option value="has_assignment">Has 2026 assignment</option>
+        <option value="active">Active only</option>
+        <option value="all">All developers</option>
+      </select>
+      <button class="btn" onclick="exportRates()">Export Excel</button>
+    </div>
+    <div class="toolbar" id="rates-toolbar-team" style="display:none">
+      <button class="btn" onclick="ratesBackToAll()">← Back</button>
+      <button class="btn" onclick="ratesPrevTeam()" title="Previous team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" onclick="ratesNextTeam()" title="Next team"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div style="flex:1"></div>
+      <select id="rates-filter-status2" onchange="renderRates()">
+        <option value="has_assignment">Has 2026 assignment</option>
+        <option value="active">Active only</option>
+        <option value="all">All developers</option>
+      </select>
+      <button class="btn" onclick="exportRates()">Export Excel</button>
+    </div>
+    <div id="rates-team-title-row" style="display:none;padding:0.5rem 0 0.75rem 0">
+      <span id="rates-team-title" style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px"></span>
+    </div>
+    <div style="margin-bottom:0.75rem;font-size:12px;color:var(--text-2);line-height:1.6">Click any rate cell to edit. Highlighted cells indicate a rate change from the previous month.</div>
+    <div class="table-wrap" style="overflow-x:auto">
+      <table style="table-layout:fixed;min-width:900px" id="rates-table">
+        <thead id="rates-thead">
+          <tr>
+            <th style="width:180px;position:sticky;left:0;background:var(--bg);z-index:2;cursor:pointer;user-select:none" onclick="setRatesSort('lastname')">Developer<span id="rates-arrow-lastname" style="font-size:10px"> ⇅</span></th>
+            <th style="width:62px;text-align:center">Jan</th>
+            <th style="width:62px;text-align:center">Feb</th>
+            <th style="width:62px;text-align:center">Mar</th>
+            <th style="width:62px;text-align:center">Apr</th>
+            <th style="width:62px;text-align:center">May</th>
+            <th style="width:62px;text-align:center">Jun</th>
+            <th style="width:62px;text-align:center">Jul</th>
+            <th style="width:62px;text-align:center">Aug</th>
+            <th style="width:62px;text-align:center">Sep</th>
+            <th style="width:62px;text-align:center">Oct</th>
+            <th style="width:62px;text-align:center">Nov</th>
+            <th style="width:62px;text-align:center">Dec</th>
+          </tr>
+        </thead>
+        <tbody id="rates-body"><tr><td colspan="14" class="loading">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="page" id="page-revenue">
+    <div class="toolbar">
+      <h2 style="flex:1">Revenue 2026</h2>
+      <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+        <button id="btn-rev-eur" onclick="setRevCurrency('eur')"
+          style="border:none;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;background:var(--blue);color:#fff;border-right:1px solid var(--border)">€ EUR</button>
+        <button id="btn-rev-usd" onclick="setRevCurrency('usd')"
+          style="border:none;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;background:var(--surface);color:var(--text-2)">$ USD</button>
+      </div>
+      <div class="view-toggle">
+        <button class="active" id="btn-rev-overview" onclick="switchRevView('overview')">Overview</button>
+        <button id="btn-rev-split" onclick="switchRevView('split')">EU / India</button>
+        <button id="btn-rev-detail" onclick="switchRevView('detail')">Team detail</button>
+        <button id="btn-rev-devdetail" onclick="switchRevView('devdetail')">Hours & Revenue</button>
+      </div>
+      <button class="btn" onclick="exportRevenue()">Export Excel</button>
+    </div>
+    <div class="stats-row" id="rev-stats-row">
+      <div class="stat-card">
+        <div class="stat-label">YTD Revenue</div>
+        <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap">
+          <div class="stat-value" id="rev-stat-ytd" style="color:var(--blue)">—</div>
+          <div id="rev-stat-ytd-sep" style="font-size:18px;font-weight:300;color:var(--border);margin:0 10px;display:none"> / </div>
+          <div id="rev-stat-ytd-usd" style="font-size:18px;font-weight:600;letter-spacing:-0.3px;color:var(--text-3);display:none"></div>
+        </div>
+        <div class="stat-sub" id="rev-stat-ytd-sub">locked months</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Full year forecast</div>
+        <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap">
+          <div class="stat-value" id="rev-stat-total">—</div>
+          <div id="rev-stat-total-sep" style="font-size:18px;font-weight:300;color:var(--border);margin:0 10px;display:none"> / </div>
+          <div id="rev-stat-total-usd" style="font-size:18px;font-weight:600;letter-spacing:-0.3px;color:var(--text-3);display:none"></div>
+        </div>
+        <div class="stat-sub">all 12 months</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active developers</div>
+        <div class="stat-value" id="rev-stat-devs">—</div>
+        <div class="stat-sub">with 2026 assignment</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Months locked</div>
+        <div class="stat-value" id="rev-stat-locked" style="color:var(--green)">—</div>
+        <div class="stat-sub" id="rev-stat-locked-sub">as actuals</div>
+      </div>
+    </div>
+    <div class="rev-legend">
+      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--green-lt);border:1px solid #86EFAC"></div> Actuals</div>
+      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--amber-lt);border:1px solid #FCD34D"></div> Manual</div>
+      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--blue-lt);border:1px solid var(--blue-mid)"></div> Forecast</div>
+      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--red-lt);border:1px solid #FCA5A5"></div> Manual needed</div>
+      <div class="rev-legend-item"><div class="rev-legend-dot" style="background:var(--border-lt);border:1px solid var(--border)"></div> No active PO</div>
+    </div>
+
+    <div id="rev-overview-view">
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="min-width:160px;position:sticky;left:0;background:var(--bg);z-index:2;text-align:left">Team</th>
+              <th style="text-align:right;white-space:nowrap">Jan</th>
+              <th style="text-align:right;white-space:nowrap">Feb</th>
+              <th style="text-align:right;white-space:nowrap">Mar</th>
+              <th style="text-align:right;white-space:nowrap">Apr</th>
+              <th style="text-align:right;white-space:nowrap">May</th>
+              <th style="text-align:right;white-space:nowrap">Jun</th>
+              <th style="text-align:right;white-space:nowrap">Jul</th>
+              <th style="text-align:right;white-space:nowrap">Aug</th>
+              <th style="text-align:right;white-space:nowrap">Sep</th>
+              <th style="text-align:right;white-space:nowrap">Oct</th>
+              <th style="text-align:right;white-space:nowrap">Nov</th>
+              <th style="text-align:right;white-space:nowrap">Dec</th>
+              <th style="text-align:right;white-space:nowrap;font-weight:500">Total</th>
+            </tr>
+          </thead>
+          <tbody id="rev-overview-body"><tr><td colspan="14" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="rev-split-view" style="display:none">
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="min-width:160px;position:sticky;left:0;background:var(--bg);z-index:2;text-align:left">Team</th>
+              <th style="text-align:right;white-space:nowrap">Jan</th>
+              <th style="text-align:right;white-space:nowrap">Feb</th>
+              <th style="text-align:right;white-space:nowrap">Mar</th>
+              <th style="text-align:right;white-space:nowrap">Apr</th>
+              <th style="text-align:right;white-space:nowrap">May</th>
+              <th style="text-align:right;white-space:nowrap">Jun</th>
+              <th style="text-align:right;white-space:nowrap">Jul</th>
+              <th style="text-align:right;white-space:nowrap">Aug</th>
+              <th style="text-align:right;white-space:nowrap">Sep</th>
+              <th style="text-align:right;white-space:nowrap">Oct</th>
+              <th style="text-align:right;white-space:nowrap">Nov</th>
+              <th style="text-align:right;white-space:nowrap">Dec</th>
+              <th style="text-align:right;white-space:nowrap;font-weight:500">Total</th>
+            </tr>
+          </thead>
+          <tbody id="rev-split-body"><tr><td colspan="14" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="rev-detail-view" style="display:none">
+      <div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:8px">
+        <button class="btn" onclick="changeDetailTeam(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
+        <select id="rev-detail-team" onchange="renderRevDetail()" style="font-size:13px;padding:6px 10px;flex:1;max-width:280px">
+          <option value="">Select a team...</option>
+        </select>
+        <button class="btn" onclick="changeDetailTeam(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
+      </div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="table-layout:fixed;min-width:900px">
+          <thead>
+            <tr>
+              <th style="width:180px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+              <th style="width:72px;text-align:right">Jan</th>
+              <th style="width:72px;text-align:right">Feb</th>
+              <th style="width:72px;text-align:right">Mar</th>
+              <th style="width:72px;text-align:right">Apr</th>
+              <th style="width:72px;text-align:right">May</th>
+              <th style="width:72px;text-align:right">Jun</th>
+              <th style="width:72px;text-align:right">Jul</th>
+              <th style="width:72px;text-align:right">Aug</th>
+              <th style="width:72px;text-align:right">Sep</th>
+              <th style="width:72px;text-align:right">Oct</th>
+              <th style="width:72px;text-align:right">Nov</th>
+              <th style="width:72px;text-align:right">Dec</th>
+              <th style="width:82px;text-align:right;font-weight:500">Total</th>
+            </tr>
+          </thead>
+          <tbody id="rev-detail-body"><tr><td colspan="14" class="empty">Select a team above</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="rev-devdetail-view" style="display:none">
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="changeDevDetailTeam(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
+        <select id="rev-devdetail-team" onchange="renderRevDevDetail()" style="font-size:13px;padding:6px 10px;max-width:280px">
+          <option value="">Select a team...</option>
+        </select>
+        <button class="btn" onclick="changeDevDetailTeam(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <button class="btn" onclick="changeDevDetailMonth(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
+          <span id="rev-devdetail-month-label" style="font-size:15px;font-weight:500;min-width:120px;text-align:center"></span>
+          <button class="btn" onclick="changeDevDetailMonth(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table style="table-layout:fixed;width:100%">
+          <thead>
+            <tr>
+              <th style="width:200px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+              <th style="width:80px;text-align:right">Hours</th>
+              <th style="width:80px;text-align:right">Rate</th>
+              <th style="width:110px;text-align:right">Revenue</th>
+              <th style="width:80px;text-align:center">Util %</th>
+              <th style="width:120px;text-align:center">Source</th>
+            </tr>
+          </thead>
+          <tbody id="rev-devdetail-body"><tr><td colspan="6" class="empty">Select a team above</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="rev-selfhosting-view" style="display:none">
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h3 style="font-size:15px;font-weight:500;margin:0;flex:1">Selfhosting — Fixed Price Revenue</h3>
+        <button class="btn btn-primary" onclick="openAddSelfhostingService()">+ Add service</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Set release counts per service per month. Hardware Monthly Fee is always counted. Use ▲▼ arrows to adjust release counts. Forecast row shows expected releases for future months.
+      </div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="width:100%;table-layout:auto" id="selfhosting-table">
+          <thead>
+            <tr>
+              <th style="min-width:220px;position:sticky;left:0;background:var(--bg);z-index:2;text-align:left">Service / HW</th>
+              <th style="text-align:center;white-space:nowrap">Rate (€)</th>
+              <th style="text-align:center;white-space:nowrap">Jan</th>
+              <th style="text-align:center;white-space:nowrap">Feb</th>
+              <th style="text-align:center;white-space:nowrap">Mar</th>
+              <th style="text-align:center;white-space:nowrap">Apr</th>
+              <th style="text-align:center;white-space:nowrap">May</th>
+              <th style="text-align:center;white-space:nowrap">Jun</th>
+              <th style="text-align:center;white-space:nowrap">Jul</th>
+              <th style="text-align:center;white-space:nowrap">Aug</th>
+              <th style="text-align:center;white-space:nowrap">Sep</th>
+              <th style="text-align:center;white-space:nowrap">Oct</th>
+              <th style="text-align:center;white-space:nowrap">Nov</th>
+              <th style="text-align:center;white-space:nowrap">Dec</th>
+              <th style="text-align:right;white-space:nowrap">Total</th>
+            </tr>
+          </thead>
+          <tbody id="selfhosting-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="rev-cvs-oncall-view" style="display:none">
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:12px">
+        <h3 style="font-size:15px;font-weight:500;margin:0;flex:1">CVS Oncall — Fixed Price Revenue</h3>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Fixed monthly fee €2,200 + number of incidents × €240. Incidents are logged below and counted per month automatically.
+      </div>
+
+      <div class="table-wrap" style="overflow-x:auto;margin-bottom:2rem">
+        <table style="width:100%;table-layout:auto" id="cvs-oncall-summary-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;min-width:160px">Item</th>
+              <th style="text-align:center">Jan</th><th style="text-align:center">Feb</th>
+              <th style="text-align:center">Mar</th><th style="text-align:center">Apr</th>
+              <th style="text-align:center">May</th><th style="text-align:center">Jun</th>
+              <th style="text-align:center">Jul</th><th style="text-align:center">Aug</th>
+              <th style="text-align:center">Sep</th><th style="text-align:center">Oct</th>
+              <th style="text-align:center">Nov</th><th style="text-align:center">Dec</th>
+              <th style="text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody id="cvs-oncall-summary-body"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.75rem">
+        <h3 style="font-size:14px;font-weight:500;margin:0;flex:1">Incident log 2026</h3>
+        <button class="btn btn-primary" onclick="openAddIncident()">+ Add incident</button>
+      </div>
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="text-align:left;width:120px">Jira ID</th>
+              <th style="text-align:left;width:110px">Date</th>
+              <th style="text-align:left">Description</th>
+              <th style="width:80px"></th>
+            </tr>
+          </thead>
+          <tbody id="cvs-oncall-incidents-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="page" id="page-info">
+    <div class="toolbar">
+      <h2 style="flex:1">Info</h2>
+      <select id="info-select" onchange="switchInfoView(this.value)" style="font-size:13px;padding:6px 14px;min-width:200px">
+        <option value="rates2026">Rates catalog 2026</option>
+        <option value="rates2025">Rates catalog 2025</option>
+      </select>
+    </div>
+    <div id="info-rates2026">
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="text-align:left">Role</th>
+              <th style="text-align:left">Seniority</th>
+              <th style="text-align:right">Hourly rate (EUR)</th>
+              <th style="text-align:left">Catalog name</th>
+              <th style="text-align:right">152h equivalent</th>
+            </tr>
+          </thead>
+          <tbody id="info-body-2026"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="info-rates2025" style="display:none">
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="text-align:left">Role</th>
+              <th style="text-align:left">Seniority</th>
+              <th style="text-align:right">Hourly rate (EUR)</th>
+              <th style="text-align:left">Catalog name</th>
+              <th style="text-align:right">152h equivalent</th>
+            </tr>
+          </thead>
+          <tbody id="info-body-2025"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-costs">
+    <div class="toolbar">
+      <h2 style="flex:1">Costs</h2>
+      <div class="view-toggle">
+        <button class="active" id="btn-costs-salaries" onclick="switchCostsView('salaries')">Salaries</button>
+        <button id="btn-costs-ctc" onclick="switchCostsView('ctc')">Cost to center</button>
+        <button id="btn-costs-overhead" onclick="switchCostsView('overhead')">Overhead</button>
+        <button id="btn-costs-devcosts" onclick="switchCostsView('devcosts')">COGS</button>
+      </div>
+    </div>
+
+    <!-- ══ SALARIES TAB ══ -->
+    <div id="costs-salaries" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Monthly salary per developer. For <strong>Slovakia FTE</strong>: gross monthly salary (€).
+        For <strong>contractors</strong>: daily rate (€/day). Click any cell to edit. Use "Apply to all months" to fill year at once.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+        <select id="salaries-year" onchange="renderSalaries()" style="font-size:13px;padding:6px 10px">
+          <option value="2026">2026</option><option value="2027">2027</option>
+        </select>
+        <select id="salaries-team" onchange="renderSalaries()" style="font-size:13px;padding:6px 10px;min-width:200px">
+          <option value="">All teams</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;font-size:13px;table-layout:auto">
+          <thead><tr>
+            <th style="text-align:left;padding:7px 10px;width:220px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+            <th style="text-align:left;padding:7px 8px;width:100px">Location</th>
+            <th style="text-align:left;padding:7px 8px;width:45px">Type</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jan</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Feb</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Mar</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Apr</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">May</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jun</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jul</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Aug</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Sep</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Oct</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Nov</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Dec</th>
+          </tr></thead>
+          <tbody id="salaries-body"><tr><td colspan="15" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ COST TO CENTER TAB ══ -->
+    <div id="costs-ctc" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Cost to Center (CTC) per developer per month in EUR. Used as the basis for COGS calculation.
+        Click any cell to enter or edit. Use "Apply till end of year" to fill remaining months.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+        <select id="ctc-year" onchange="renderCtc()" style="font-size:13px;padding:6px 10px">
+          <option value="2026">2026</option><option value="2027">2027</option>
+        </select>
+        <select id="ctc-team" onchange="renderCtc()" style="font-size:13px;padding:6px 10px;min-width:200px">
+          <option value="">All teams</option>
+        </select>
+        <label style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px">
+          Contractor days:
+          <select id="ctc-contractor-days" onchange="renderCtc()" style="font-size:13px;padding:6px 10px">
+            <option value="19">19</option>
+            <option value="20" selected>20</option>
+          </select>
+        </label>
+        <button class="btn" onclick="recalcAllContractors()" style="font-size:12px;padding:5px 12px">↻ Recalculate contractors</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;font-size:13px;table-layout:auto">
+          <thead><tr>
+            <th style="text-align:left;padding:7px 10px;width:220px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+            <th style="text-align:left;padding:7px 8px;width:100px">Location</th>
+            <th style="text-align:left;padding:7px 8px;width:45px">Type</th>
+            <th style="text-align:left;padding:7px 8px;width:60px"></th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jan</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Feb</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Mar</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Apr</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">May</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jun</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jul</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Aug</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Sep</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Oct</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Nov</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Dec</th>
+          </tr></thead>
+          <tbody id="ctc-body"><tr><td colspan="15" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+
+
+
+    <!-- ══ OVERHEAD TAB ══ -->
+    <div id="costs-overhead" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Fixed overhead (€) per location, type and month. <strong>COGS = CTC + Overhead</strong>.
+        Click any cell to enter. Use "Apply till end of year" to fill remaining months.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem">
+        <select id="overhead-year" onchange="renderOverhead()" style="font-size:13px;padding:6px 10px">
+          <option value="2026">2026</option><option value="2027">2027</option>
+        </select>
+        <button class="btn" onclick="openOverheadBulkModal()" style="font-size:13px">⚡ Bulk update</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;font-size:13px;table-layout:auto">
+          <thead><tr>
+            <th style="text-align:left;padding:7px 10px;width:160px;position:sticky;left:0;background:var(--bg);z-index:2">Location</th>
+            <th style="text-align:left;padding:7px 8px;width:90px">Type</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jan</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Feb</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Mar</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Apr</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">May</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jun</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jul</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Aug</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Sep</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Oct</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Nov</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Dec</th>
+          </tr></thead>
+          <tbody id="overhead-body"><tr><td colspan="14" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ COGS TAB ══ -->
+    <div id="costs-devcosts" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Calculated COGS per developer per month. <strong>COGS = CTC + Overhead</strong>.
+        Read-only — update Salaries, Cost to center or Overhead tabs to affect values.<br>
+        <span style="display:inline-flex;align-items:center;gap:6px;margin-top:4px">
+          <span style="background:var(--green-lt);color:var(--green);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">€ value</span> Calculated &nbsp;·&nbsp;
+          <span style="background:var(--bg);color:var(--text-3);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">—</span> CTC missing
+        </span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+        <select id="devcosts-year" onchange="renderDevCosts()" style="font-size:13px;padding:6px 10px">
+          <option value="2026">2026</option><option value="2027">2027</option>
+        </select>
+        <select id="devcosts-team" onchange="renderDevCosts()" style="font-size:13px;padding:6px 10px;min-width:200px">
+          <option value="">All teams</option>
+        </select>
+
+      </div>
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;font-size:13px;table-layout:auto">
+          <thead><tr>
+            <th style="text-align:left;padding:7px 10px;width:220px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+            <th style="text-align:left;padding:7px 8px;width:100px">Location</th>
+            <th style="text-align:left;padding:7px 8px;width:45px">Type</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jan</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Feb</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Mar</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Apr</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">May</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jun</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Jul</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Aug</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Sep</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Oct</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Nov</th>
+            <th style="text-align:center;padding:7px 5px;min-width:48px">Dec</th>
+          </tr></thead>
+          <tbody id="devcosts-body"><tr><td colspan="15" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+
+    </div>
+
+
+
+  </div>
+
+  <!-- PO PAGE -->
+  <div class="page" id="page-po">
+    <div class="toolbar">
+      <h2 style="margin-right:16px">Purchase Orders</h2>
+      <div class="btn-group" style="margin-right:auto">
+        <button id="btn-po-invoiced" class="btn active" onclick="switchPOScope('invoiced')">Invoiced</button>
+        <button id="btn-po-forecasted" class="btn" onclick="switchPOScope('forecasted')">Forecasted</button>
+      </div>
+      <div class="btn-group" style="margin-right:12px">
+        <button id="btn-po-hours" class="btn active" onclick="switchPOView('hours')">Hours</button>
+        <button id="btn-po-value" class="btn" onclick="switchPOView('value')">Value</button>
+      </div>
+      <button class="btn btn-primary" onclick="openAddPO()" style="font-size:13px">+ Add PO</button>
+    </div>
+    <div id="po-content">
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto;font-size:13px">
+          <thead>
+            <tr>
+              <th style="width:60px;text-align:center"></th>
+              <th style="text-align:left;min-width:120px">PO Number</th>
+              <th style="text-align:left;min-width:180px">Team</th>
+              <th style="text-align:left;min-width:160px">Period</th>
+              <th style="text-align:center;width:70px">Type</th>
+              <th style="text-align:right;width:120px">Total Value</th>
+              <th id="po-th-used" style="text-align:right;width:160px">Hours Used / Auth.</th>
+              <th style="text-align:right;width:80px">% Used</th>
+              <th style="text-align:center;width:70px"></th>
+            </tr>
+          </thead>
+          <tbody id="po-tbody"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PO Modal -->
+  <div class="modal-bg" id="po-modal">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <span id="po-modal-title" style="font-weight:600">Add Purchase Order</span>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">PO Number</label>
+            <input type="text" id="po-number" placeholder="e.g. 50019236" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">Version</label>
+            <input type="number" id="po-version" value="1" min="1" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">PO Date</label>
+            <input type="date" id="po-date" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">Type</label>
+            <select id="po-type" style="width:100%;font-size:13px;padding:7px 10px">
+              <option value="tm">T&M (Time & Materials)</option>
+              <option value="fixed">Fixed Price</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Team</label>
+          <input type="text" id="po-team" placeholder="e.g. 3D Visuals EU, EarthCore dep." style="width:100%;font-size:13px;padding:7px 10px">
+        </div>
+        <div>
+          <label class="form-label">Linked Teams <span style="font-weight:400;color:var(--text-3)">(optional — comma separated, e.g. 3D Visuals IN)</span></label>
+          <input type="text" id="po-linked-teams" placeholder="e.g. 3D Visuals IN, Lumiere program IN" style="width:100%;font-size:13px;padding:7px 10px">
+        </div>
+        <div>
+          <label class="form-label">Contract</label>
+          <input type="text" id="po-contract" placeholder="e.g. 13388 - Ness Global Services..." style="width:100%;font-size:13px;padding:7px 10px">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">Start Date</label>
+            <input type="date" id="po-start" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">End Date</label>
+            <input type="date" id="po-end" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">Currency</label>
+            <select id="po-currency" style="width:100%;font-size:13px;padding:7px 10px">
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Total PO Value</label>
+          <input type="number" id="po-total" step="0.01" placeholder="e.g. 1296852.35" style="width:100%;font-size:13px;padding:7px 10px">
+        </div>
+        <div>
+          <label class="form-label">Notes</label>
+          <input type="text" id="po-notes" style="width:100%;font-size:13px;padding:7px 10px">
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:space-between">
+        <button class="btn" id="po-delete-btn" style="display:none;color:var(--red)" onclick="deletePO()">Delete</button>
+        <div style="display:flex;gap:8px;margin-left:auto">
+          <button class="btn" onclick="closeModal('po-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="savePO()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PO Line Modal -->
+  <div class="modal-bg" id="line-modal">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <span id="line-modal-title" style="font-weight:600">Add PO Line</span>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:12px">
+          <div>
+            <label class="form-label">Line #</label>
+            <input type="number" id="line-number" min="1" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">Description</label>
+            <input type="text" id="line-description" placeholder="e.g. NESS Sr. Engineer [SVK] (2026)" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">Catalog Role</label>
+            <select id="line-catalog-role" style="width:100%;font-size:13px;padding:7px 10px">
+              <option value="Regular">Regular Engineer</option>
+              <option value="Senior">Sr. Engineer</option>
+              <option value="Lead">Lead Engineer</option>
+              <option value="PM">Project Manager</option>
+              <option value="oncall">OnCall Support</option>
+              <option value="discount">Discount</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Location</label>
+            <select id="line-location" style="width:100%;font-size:13px;padding:7px 10px">
+              <option value="SVK">SVK — Slovakia</option>
+              <option value="IND">IND — India</option>
+              <option value="ROM">ROM — Romania</option>
+              <option value="LAT">LAT — Latvia</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">Authorized Hours</label>
+            <input type="number" id="line-qty" step="1" placeholder="e.g. 1891" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">Rate (€/hr)</label>
+            <input type="number" id="line-rate" step="0.01" placeholder="e.g. 49.37" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Hours used before 2026 <span style="font-weight:400;color:var(--text-3)">(for cross-year POs only)</span></label>
+          <input type="number" id="line-before2026" value="0" step="1" style="width:100%;font-size:13px;padding:7px 10px">
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:space-between">
+        <button class="btn" id="line-delete-btn" style="display:none;color:var(--red)" onclick="deleteLine()">Delete</button>
+        <div style="display:flex;gap:8px;margin-left:auto">
+          <button class="btn" onclick="closeModal('line-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveLine()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-settings">
+    <div class="toolbar">
+      <button class="btn" onclick="changeSettingsView(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
+      <select id="settings-select" onchange="switchSettingsView(this.value)" style="font-size:13px;padding:6px 14px;min-width:220px">
+        <option value="teamorder">Teams</option>
+        <option value="locations">Location's working hours &amp; holidays</option>
+        <option value="utilization">Forecasted utilization</option>
+        <option value="discounts">Developer discounts</option>
+        <option value="teamdiscounts">Team discounts</option>
+        <option value="extrainvoicing">Extra invoicing</option>
+        <option value="lockedmonths">Locked months</option>
+        <option value="eurusd">USD/EUR rates</option>
+        <option value="invgroups">Invoice order &amp; grouping</option>
+        <option value="snapshots">Snapshots</option>
+        <option value="linkedteams">PO Linked Teams</option>
+        <option value="devorder">Developer order</option>
+      </select>
+      <button class="btn" onclick="changeSettingsView(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
+    </div>
+
+    <div id="settings-teamorder">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
+        <div style="font-size:12px;color:var(--text-2);flex:1;line-height:1.6">Manage teams — add, edit, delete, and set display order. Use ▲▼ to reorder within region.</div>
+        <button class="btn btn-primary" onclick="openAddTeamModal()" style="font-size:13px;white-space:nowrap">+ Add team</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;max-width:800px">
+        <div>
+          <div style="font-weight:600;font-size:14px;color:var(--blue);margin-bottom:0.75rem;padding-bottom:6px;border-bottom:2px solid #dde4f5">Europe teams</div>
+          <div id="team-order-europe"></div>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:14px;color:var(--blue);margin-bottom:0.75rem;padding-bottom:6px;border-bottom:2px solid #dde4f5">India teams</div>
+          <div id="team-order-india"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings-devorder" style="display:none">
+      <div id="dev-order-container"></div>
+    </div>
+
+    <div id="settings-linkedteams" style="display:none">
+    </div>
+
+    <div id="settings-locations" style="display:none">
+      <div style="margin-bottom:0.75rem;font-size:12px;color:var(--text-2);line-height:1.6">Working hours per location per month. Used to calculate max billable hours for revenue forecasting.</div>
+
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:0.5rem">All weekdays × 8h (maximum possible hours if no public holidays) — 2026:</div>
+        <div class="table-wrap" style="overflow-x:auto">
+          <table style="border-collapse:collapse;font-size:12px;table-layout:fixed;width:100%">
+            <colgroup>
+              <col style="width:140px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+              <col style="width:56px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+              <col style="width:56px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+              <col style="width:56px"><col style="width:64px"><col style="width:60px">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="text-align:left;padding:5px 10px;background:var(--bg)"></th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Jan</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Feb</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Mar</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Apr</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">May</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Jun</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Jul</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Aug</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Sep</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Oct</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Nov</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg)">Dec</th>
+                <th style="text-align:center;padding:5px 6px;background:var(--bg);font-weight:600">Total</th>
+                <th style="background:var(--bg)"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:5px 10px;color:var(--text-2);font-size:11px">Weekdays</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2)">22</td><td style="text-align:center;padding:5px 6px;color:var(--text-2)">20</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2)">22</td><td style="text-align:center;padding:5px 6px;color:var(--text-2)">22</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2)">21</td><td style="text-align:center;padding:5px 6px;color:var(--text-2)">22</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2)">23</td><td style="text-align:center;padding:5px 6px;color:var(--text-2)">21</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2)">22</td><td style="text-align:center;padding:5px 6px;color:var(--text-2)">22</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2)">21</td><td style="text-align:center;padding:5px 6px;color:var(--text-2)">23</td>
+                <td style="text-align:center;padding:5px 6px;color:var(--text-2);font-weight:600">261</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td style="padding:5px 10px;font-weight:500">Max hours</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:500">176</td><td style="text-align:center;padding:5px 6px;font-weight:500">160</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:500">176</td><td style="text-align:center;padding:5px 6px;font-weight:500">176</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:500">168</td><td style="text-align:center;padding:5px 6px;font-weight:500">176</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:500">184</td><td style="text-align:center;padding:5px 6px;font-weight:500">168</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:500">176</td><td style="text-align:center;padding:5px 6px;font-weight:500">176</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:500">168</td><td style="text-align:center;padding:5px 6px;font-weight:500">184</td>
+                <td style="text-align:center;padding:5px 6px;font-weight:600;color:var(--blue)">2088</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style="margin-bottom:0.75rem">
+        <button class="btn btn-primary" onclick="openAddLocation()">+ Add location</button>
+      </div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="table-layout:fixed;width:100%;border-collapse:collapse">
+          <colgroup>
+            <col style="width:140px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+            <col style="width:56px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+            <col style="width:56px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+            <col style="width:56px"><col style="width:64px"><col style="width:60px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th style="text-align:left">Location</th>
+              <th style="width:56px;text-align:center">Jan</th>
+              <th style="width:56px;text-align:center">Feb</th>
+              <th style="width:56px;text-align:center">Mar</th>
+              <th style="width:56px;text-align:center">Apr</th>
+              <th style="width:56px;text-align:center">May</th>
+              <th style="width:56px;text-align:center">Jun</th>
+              <th style="width:56px;text-align:center">Jul</th>
+              <th style="width:56px;text-align:center">Aug</th>
+              <th style="width:56px;text-align:center">Sep</th>
+              <th style="width:56px;text-align:center">Oct</th>
+              <th style="width:56px;text-align:center">Nov</th>
+              <th style="width:56px;text-align:center">Dec</th>
+              <th style="width:56px;text-align:center">Total</th>
+              <th style="width:60px"></th>
+            </tr>
+          </thead>
+          <tbody id="locations-body"><tr><td colspan="15" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="margin-top:2rem;font-size:12px;color:var(--text-2);margin-bottom:0.75rem;line-height:1.6">
+        Public holidays per location per month — calculated as (weekdays &times; 8 &minus; working hours) &divide; 8.
+        2026 weekdays: Jan 22, Feb 20, Mar 22, Apr 22, May 21, Jun 22, Jul 23, Aug 21, Sep 22, Oct 22, Nov 21, Dec 23.
+      </div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">
+          <colgroup>
+            <col style="width:140px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+            <col style="width:56px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+            <col style="width:56px"><col style="width:56px"><col style="width:56px"><col style="width:56px">
+            <col style="width:56px"><col style="width:64px"><col style="width:60px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th style="text-align:left">Location</th>
+              <th style="text-align:center">Jan</th><th style="text-align:center">Feb</th>
+              <th style="text-align:center">Mar</th><th style="text-align:center">Apr</th>
+              <th style="text-align:center">May</th><th style="text-align:center">Jun</th>
+              <th style="text-align:center">Jul</th><th style="text-align:center">Aug</th>
+              <th style="text-align:center">Sep</th><th style="text-align:center">Oct</th>
+              <th style="text-align:center">Nov</th><th style="text-align:center">Dec</th>
+              <th style="text-align:center;font-weight:600">Total</th><th></th>
+            </tr>
+            </tr>
+          </thead>
+          <tbody id="locations-holidays-body"><tr><td colspan="15" class="loading">Loading...</td></tr></tbody>
+
+        </table>
+      </div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:0.75rem">Manage public holidays per location</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+          <select id="ph-loc-select" onchange="renderPhList()" style="font-size:13px;padding:6px 10px;min-width:180px">
+            <option value="">— select location —</option>
+          </select>
+          <select id="ph-year-select" onchange="renderPhList()" style="font-size:13px;padding:6px 10px">
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+          </select>
+          <button class="btn btn-primary" onclick="openAddPhModal()" style="font-size:13px">+ Add holiday</button>
+        </div>
+        <div id="ph-list" style="max-width:600px"></div>
+      </div>
+
+
+    <!-- ══ SNAPSHOTS TAB ══ -->
+    <div id="settings-snapshots" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1.5rem;line-height:1.6">
+        Store calculated values permanently for a selected month. Snapshotted data is used instead of live calculations for that month.
+        Re-running a snapshot will overwrite existing data after confirmation.
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap">
+        <div>
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Month to snapshot</label>
+          <select id="snapshot-month" onchange="renderSnapshots()" style="font-size:13px;padding:6px 10px;min-width:160px">
+            <option value="1">January 2026</option>
+            <option value="2">February 2026</option>
+            <option value="3">March 2026</option>
+            <option value="4">April 2026</option>
+            <option value="5">May 2026</option>
+            <option value="6">June 2026</option>
+            <option value="7">July 2026</option>
+            <option value="8">August 2026</option>
+            <option value="9">September 2026</option>
+            <option value="10">October 2026</option>
+            <option value="11">November 2026</option>
+            <option value="12">December 2026</option>
+          </select>
+        </div>
+        <div style="padding-top:20px">
+          <button class="btn btn-primary" onclick="runSnapshot()" style="font-size:13px;padding:8px 20px">
+            📸 Run Snapshot
+          </button>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:0.75rem">Select what to snapshot:</div>
+      <div id="snapshots-container" style="max-width:680px">
+        <div style="color:var(--text-3);font-size:13px">Loading...</div>
+      </div>
+    </div>
+
+
+
+    <!-- Team Cost Modal -->
+    <div class="modal-bg" id="teamcost-modal">
+      <div class="modal" style="max-width:420px">
+        <h2 id="teamcost-modal-title">Add team cost</h2>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Team</label>
+          <select id="teamcost-team" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"></select>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Month</label>
+          <select id="teamcost-month" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+            <option value="0">All months (same amount)</option>
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Description</label>
+          <input type="text" id="teamcost-desc" placeholder="e.g. CVS On-Call payment"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        </div>
+        <div style="margin-bottom:1.25rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Amount (€)</label>
+          <input type="number" id="teamcost-amount" min="0" step="0.01" placeholder="e.g. 2237.12"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        </div>
+        <div class="modal-footer">
+          <button id="teamcost-btn-delete" class="btn btn-danger" onclick="deleteTeamCost()" style="display:none">Delete</button>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('teamcost-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTeamCost()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings-utilization" style="display:none">
+      <div style="margin-bottom:0.75rem;font-size:12px;color:var(--text-2);line-height:1.6">Team utilization % per month. Click any cell to edit. Used for future month revenue forecasting.</div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="table-layout:fixed;min-width:900px">
+          <thead>
+            <tr>
+              <th style="width:180px;position:sticky;left:0;background:var(--bg);z-index:2">Team</th>
+              <th style="width:66px;text-align:center">Jan</th>
+              <th style="width:66px;text-align:center">Feb</th>
+              <th style="width:66px;text-align:center">Mar</th>
+              <th style="width:66px;text-align:center">Apr</th>
+              <th style="width:66px;text-align:center">May</th>
+              <th style="width:66px;text-align:center">Jun</th>
+              <th style="width:66px;text-align:center">Jul</th>
+              <th style="width:66px;text-align:center">Aug</th>
+              <th style="width:66px;text-align:center">Sep</th>
+              <th style="width:66px;text-align:center">Oct</th>
+              <th style="width:66px;text-align:center">Nov</th>
+              <th style="width:66px;text-align:center">Dec</th>
+            </tr>
+          </thead>
+          <tbody id="rev-util-body"><tr><td colspan="13" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="settings-discounts" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.75rem">
+        <div style="font-size:13px;color:var(--text-2);flex:1">Discounted rates per developer. Applied in Team detail and Hours & Revenue as separate discount lines.</div>
+        <button class="btn btn-primary" onclick="openDiscountModal(null)">+ Add discount</button>
+      </div>
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="text-align:left">Developer</th>
+              <th style="text-align:right">Standard rate</th>
+              <th style="text-align:right">Discounted rate</th>
+              <th style="text-align:left">Start date</th>
+              <th style="text-align:left">End date</th>
+              <th style="text-align:left">Note</th>
+              <th style="width:80px"></th>
+            </tr>
+          </thead>
+          <tbody id="discounts-body"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="settings-teamdiscounts" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.75rem">
+        <div style="font-size:13px;color:var(--text-2);flex:1">Team level discounts. Select a team, set the date range and add a note describing the discount type.</div>
+        <button class="btn btn-primary" onclick="openTeamDiscountModal(null)">+ Add discount</button>
+      </div>
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="text-align:left">Team</th>
+              <th style="text-align:left">Start date</th>
+              <th style="text-align:left">End date</th>
+              <th style="text-align:left">Note</th>
+              <th style="width:80px"></th>
+            </tr>
+          </thead>
+          <tbody id="team-discounts-body"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="settings-extrainvoicing" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.75rem">
+        <div style="font-size:12px;color:var(--text-2);flex:1">Extra invoicing lines added on top of regular T&amp;M. These appear as separate lines on the invoice. Specify team, month, description and value.</div>
+        <button class="btn btn-primary" onclick="openExtraInvoicingModal(null)">+ Add line</button>
+      </div>
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto">
+          <thead>
+            <tr>
+              <th style="text-align:left">Team</th>
+              <th style="text-align:left">Month</th>
+              <th style="text-align:left">Description</th>
+              <th style="text-align:right">Value (€)</th>
+              <th style="width:80px"></th>
+            </tr>
+          </thead>
+          <tbody id="extra-invoicing-body"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="settings-invgroups" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Define invoice groups, their order and PO. Teams sharing the same PO can be merged into one invoice line.
+        Use ▲ ▼ to reorder. Click <strong>Edit</strong> to change teams or PO.
+      </div>
+      <div id="invgroups-list" style="max-width:750px"></div>
+      <div style="margin-top:1rem;display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="addInvGroup()" style="font-size:13px">+ Add group</button>
+        <button class="btn" onclick="resetInvGroups()" style="font-size:13px;color:var(--text-3)">Reset to defaults</button>
+      </div>
+    </div>
+
+    <div id="settings-eurusd" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        USD/EUR exchange rate per month for 2026 (how many USD = 1 EUR). Used to display revenue in USD. Click any cell to edit.
+      </div>
+      <div class="table-wrap" style="max-width:900px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr>
+              <th style="position:sticky;left:0;background:var(--bg);z-index:2;min-width:100px">Rate</th>
+              <th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th>
+              <th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th>
+            </tr>
+          </thead>
+          <tbody id="eurusd-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="settings-lockedmonths" style="display:none">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+        Lock months to prevent any changes to actual hours. Locked months cannot be overwritten by timesheet imports, manual edits, CSV imports, or bulk updates.
+      </div>
+      <div class="table-wrap" style="max-width:700px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:9px 14px">Month</th>
+              <th style="text-align:center;padding:9px 14px">Status</th>
+              <th style="text-align:left;padding:9px 14px">Action</th>
+              <th style="padding:9px 14px;color:var(--text-3);font-size:11px">Locked months cannot be edited. Unlock to allow changes.</th>
+            </tr>
+          </thead>
+          <tbody id="locked-months-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+      <!-- Public Holiday Modal -->
+      <div class="modal-bg" id="ph-modal">
+        <div class="modal" style="max-width:400px">
+          <h2 id="ph-modal-title">Add public holiday</h2>
+          <div style="margin-bottom:1rem">
+            <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Date *</label>
+            <input type="date" id="ph-date" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+          </div>
+          <div style="margin-bottom:1.5rem">
+            <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Name (optional)</label>
+            <input type="text" id="ph-name" placeholder="e.g. New Year's Day" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+          </div>
+          <div class="modal-footer">
+            <button id="ph-btn-delete" class="btn btn-danger" onclick="deletePhHoliday()" style="display:none">Delete</button>
+            <div class="modal-footer-right">
+              <button class="btn" onclick="closeModal('ph-modal')">Cancel</button>
+              <button class="btn btn-primary" onclick="savePhHoliday()">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+  <div class="page" id="page-attendance">
+    <div class="toolbar">
+      <h2 style="flex:1">Attendance / Billable Hours 2026</h2>
+      <div class="view-toggle">
+        <button class="active" id="btn-att-overview" onclick="switchAttTab('overview')">Overview</button>
+        <button id="btn-att-bulk" onclick="switchAttTab('bulk')">Manual bulk update</button>
+      </div>
+      <div class="view-toggle">
+        <button id="btn-att-list" onclick="switchAttLayout('list')">List</button>
+        <button class="active" id="btn-att-team-layout" onclick="switchAttLayout('team')">Team</button>
+      </div>
+      <select id="att-filter-team" onchange="renderAttendance()" style="font-size:13px;padding:6px 10px;display:none">
+        <option value="">All teams</option>
+        <option value="__EU__">-- Europe teams --</option>
+        <option value="__IND__">-- India teams --</option>
+      </select>
+      <select id="att-filter-status" onchange="renderAttendance()" style="font-size:13px;padding:6px 10px">
+        <option value="active">Active only</option>
+        <option value="all">All developers</option>
+      </select>
+      <select id="att-bulk-month" onchange="renderAttBulk()" style="font-size:13px;padding:6px 10px;display:none">
+        <option value="">Select month...</option>
+        <option value="1">January</option><option value="2">February</option>
+        <option value="3">March</option><option value="4">April</option>
+        <option value="5">May</option><option value="6">June</option>
+        <option value="7">July</option><option value="8">August</option>
+        <option value="9">September</option><option value="10">October</option>
+        <option value="11">November</option><option value="12">December</option>
+      </select>
+      <button class="btn btn-primary" id="btn-att-import" onclick="openAttImport()">Import CSV</button>
+    </div>
+    <!-- Overview view -->
+    <div id="att-overview-view">
+    <div style="display:flex;gap:16px;margin-bottom:0.75rem;font-size:12px;">
+    <div class="table-wrap" style="overflow-x:auto">
+      <table style="width:100%;table-layout:auto">
+        <thead>
+          <tr>
+            <th style="min-width:160px;position:sticky;left:0;background:var(--bg);z-index:2;text-align:left">Developer</th>
+            <th id="att-team-header" style="min-width:100px;text-align:left">Team</th>
+            <th style="text-align:center;white-space:nowrap">Jan</th>
+            <th style="text-align:center;white-space:nowrap">Feb</th>
+            <th style="text-align:center;white-space:nowrap">Mar</th>
+            <th style="text-align:center;white-space:nowrap">Apr</th>
+            <th style="text-align:center;white-space:nowrap">May</th>
+            <th style="text-align:center;white-space:nowrap">Jun</th>
+            <th style="text-align:center;white-space:nowrap">Jul</th>
+            <th style="text-align:center;white-space:nowrap">Aug</th>
+            <th style="text-align:center;white-space:nowrap">Sep</th>
+            <th style="text-align:center;white-space:nowrap">Oct</th>
+            <th style="text-align:center;white-space:nowrap">Nov</th>
+            <th style="text-align:center;white-space:nowrap">Dec</th>
+          </tr>
+        </thead>
+        <tbody id="att-body"><tr><td colspan="14" class="loading">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    </div><!-- end att-overview-view -->
+
+    <!-- Bulk update view -->
+    <div id="att-bulk-view" style="display:none">
+      <div id="att-bulk-no-month" style="text-align:center;padding:3rem;color:var(--text-3);font-size:14px">
+        Select a month above to load developers
+      </div>
+      <div id="att-bulk-content" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.75rem">
+          <button class="btn btn-primary" onclick="saveAllBulkUpdates()" id="btn-bulk-save" style="margin-left:auto;display:none">Save changes</button>
+        </div>
+        <div class="table-wrap">
+          <table style="width:100%">
+            <thead>
+              <tr>
+                <th style="width:190px">Developer</th>
+                <th id="bulk-team-header" style="width:150px">Team</th>
+                <th style="width:75px;text-align:right">Hours</th>
+                <th style="width:85px;text-align:right">Set hours</th>
+                <th style="width:340px">Source / Forecasted</th>
+              </tr>
+            </thead>
+            <tbody id="att-bulk-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Update Confirmation Modal -->
+  <div class="modal-bg" id="bulk-confirm-modal">
+    <div class="modal" style="max-width:720px">
+      <h2>Confirm changes</h2>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:1rem">The following changes will be saved:</p>
+      <div class="table-wrap" style="margin-bottom:1.25rem;max-height:360px;overflow-y:auto">
+        <table style="width:100%;table-layout:fixed">
+          <colgroup>
+            <col style="width:240px">
+            <col style="width:100px">
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Developer</th>
+              <th style="text-align:right">Hours</th>
+              <th>New source</th>
+            </tr>
+          </thead>
+          <tbody id="bulk-confirm-body"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <div></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="document.getElementById('bulk-confirm-modal').classList.remove('open')">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmAndSave()">Confirm & Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-timesheets">
+    <div class="toolbar">
+      <div class="view-toggle">
+        <button class="active" id="btn-ts-check" onclick="switchTsView('check')">Check timesheet</button>
+        <button id="btn-ts-overview" onclick="switchTsView('overview')">Overview</button>
+        <button id="btn-ts-import" onclick="switchTsView('import')">Import hours from timesheet</button>
+      </div>
+      <button class="btn" onclick="clearTsData()" id="btn-ts-clear" style="display:none">✕ New check</button>
+      <button class="btn" onclick="checkKnownIssues()" id="btn-ts-known">📋 Check known issues</button>
+      <button class="btn" onclick="openTsChecksInfo()" style="font-size:13px">ℹ Checks info</button>
+      <label class="btn btn-primary" style="cursor:pointer">
+        Upload SAP export
+        <input type="file" id="ts-file-input" accept=".xlsx,.xls" style="display:none" onchange="loadTsFile(this)">
+      </label>
+      <h2 style="font-size:15px;font-weight:600;margin-left:auto">Timesheets</h2>
+    </div>
+
+    <div id="ts-no-file" style="text-align:center;padding:3rem;color:var(--text-3);font-size:14px">
+      Upload an SAP export file to begin
+    </div>
+
+    <div id="ts-content" style="display:none">
+
+      <!-- Check view -->
+      <div id="ts-check-view">
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+          <div id="ts-file-info" style="font-size:13px;color:var(--text-2);flex:1"></div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:12px;color:var(--text-2);white-space:nowrap">View developer:</label>
+            <select id="ts-dev-select" onchange="onTsDevSelect(this.value)" style="font-size:13px;padding:6px 10px;min-width:180px">
+              <option value="">— select developer —</option>
+            </select>
+          </div>
+          <select id="ts-filter-status" onchange="renderTsCheck()" style="font-size:13px;padding:6px 10px">
+            <option value="all">All statuses</option>
+            <option value="10">Status 10 — Filled, not released</option>
+            <option value="20">Status 20 — Released to manager</option>
+            <option value="30">Status 30 — Approved</option>
+          </select>
+          <select id="ts-filter-check" onchange="renderTsCheck()" style="font-size:13px;padding:6px 10px">
+            <option value="all">All issues</option>
+            <option value="missing_day">Missing day</option>
+            <option value="wrong_hours">Wrong hours</option>
+            <option value="oncall_issue">On-Call issue</option>
+            <option value="holiday_work">Holiday work</option>
+            <option value="weekend_work">Weekend work</option>
+            <option value="over_hours">Over max hours</option>
+            <option value="leave_day">Leave day</option>
+            <option value="wrong_wbs">Wrong WBS</option>
+            <option value="wbs_mismatch">WBS mismatch</option>
+            <option value="contractor">Contractor info</option>
+          </select>
+          <button class="btn btn-danger" onclick="clearAllTsAcknowledged()" style="font-size:12px;padding:5px 12px">Clear all</button>
+          <select id="ts-filter-hidden" onchange="renderTsCheck()" style="font-size:13px;padding:6px 10px">
+            <option value="visible">Hide acknowledged</option>
+            <option value="all">Show all</option>
+            <option value="new">New issues only</option>
+            <option value="hidden">Show acknowledged only</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+          <div style="background:#fff0f0;border:1px solid #ffaaaa;border-radius:var(--radius-sm);padding:10px 16px;font-size:13px">
+            <div style="font-weight:600;color:#c62828" id="ts-count-hours">0</div>
+            <div style="color:var(--text-2)">Daily hours issues</div>
+          </div>
+          <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:var(--radius-sm);padding:10px 16px;font-size:13px">
+            <div style="font-weight:600;color:var(--amber)" id="ts-count-wbs">0</div>
+            <div style="color:var(--text-2)">Wrong WBS issues</div>
+          </div>
+          <div style="background:var(--green-lt);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 16px;font-size:13px">
+            <div style="font-weight:600;color:var(--green)" id="ts-count-ok">0</div>
+            <div style="color:var(--text-2)">Developers OK</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 16px;font-size:13px">
+            <div style="font-weight:600;color:var(--text-2)" id="ts-count-hidden">0</div>
+            <div style="color:var(--text-2)">Acknowledged</div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 16px;font-size:12px;color:var(--text-2);line-height:1.6">
+            <span style="font-weight:500;color:#333">Status guide:</span><br>
+            <span style="color:var(--text-3)">10</span> = Filled, not yet released — not urgent<br>
+            <span style="color:var(--amber)">20</span> = Released to manager — needs action<br>
+            <span style="color:#c62828">30</span> = Approved — only HR can fix
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table style="width:100%;table-layout:auto">
+            <thead>
+              <tr>
+                <th style="width:36px;text-align:center">
+                  <input type="checkbox" id="ts-check-all" onchange="toggleAllTsHidden(this.checked)" title="Acknowledge all visible">
+                </th>
+                <th style="text-align:left;min-width:160px">Developer</th>
+                <th style="text-align:left;width:80px">Date</th>
+                <th style="text-align:left;width:60px">Day</th>
+                <th style="text-align:left;width:130px">Status</th>
+                <th style="text-align:left;width:100px">Issue type</th>
+                <th style="text-align:left">Details</th>
+              </tr>
+            </thead>
+            <tbody id="ts-check-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Import view -->
+      <div id="ts-overview-view" style="display:none">
+      <div style="overflow:auto;max-height:calc(100vh - 260px);scrollbar-width:thin;position:relative">
+        <table id="ts-overview-table" style="border-collapse:collapse;font-size:12px;white-space:nowrap">
+          <thead id="ts-overview-head" style="position:sticky;top:0;z-index:3"></thead>
+          <tbody id="ts-overview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="ts-import-view" style="display:none">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+          Import billable hours from SAP export as Actuals. Only approved records (status 30) are imported.
+          Existing manual hours will show conflict resolution.
+        </div>
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;align-items:center">
+          <div id="ts-import-month-label" style="font-size:13px;font-weight:600;color:var(--blue);padding:5px 14px;background:var(--blue-lt);border-radius:99px;letter-spacing:0.01em"></div>
+          <button class="btn btn-primary" onclick="runTsImport()" id="ts-import-btn" style="font-size:13px;padding:8px 20px;font-weight:500">⬇ Import selected as Actuals</button>
+          <div id="ts-import-done" style="display:none;color:var(--green);font-weight:500;font-size:13px">✓ Import complete</div>
+        </div>
+        <div class="table-wrap">
+          <table style="width:100%;table-layout:auto">
+            <thead>
+              <tr>
+                <th style="text-align:left">Developer</th>
+                <th style="text-align:right">Billable hours</th>
+                <th style="text-align:left">Status in DB</th>
+              </tr>
+            </thead>
+            <tbody id="ts-import-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       INVOICING MODULE
+  ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" id="page-invoicing">
+    <div class="toolbar">
+      <h2 style="flex:1">Invoicing</h2>
+      <div class="view-toggle">
+        <button class="active" id="btn-inv-preview" onclick="switchInvView('preview')">Preview</button>
+        <button id="btn-inv-generate" onclick="switchInvView('generate')">Generate</button>
+      </div>
+      <select id="inv-month-select" style="font-size:12px;padding:6px 10px" onchange="selectInvMonth(this.value)">
+        <option value="">Select month...</option>
+        <option value="1">January</option><option value="2">February</option>
+        <option value="3">March</option><option value="4">April</option>
+        <option value="5">May</option><option value="6">June</option>
+        <option value="7">July</option><option value="8">August</option>
+        <option value="9">September</option><option value="10">October</option>
+        <option value="11">November</option><option value="12">December</option>
+      </select>
+    </div>
+
+    <!-- No file state -->
+    <div id="inv-no-file" style="text-align:center;padding:3rem;color:var(--text-3);font-size:14px">
+      Select a month above to preview and generate invoice support files
+    </div>
+
+    <!-- Content (shown after upload) -->
+    <div id="inv-content" style="display:none">
+
+      <!-- Period info bar -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;padding:10px 14px;background:var(--blue-lt);border:1px solid var(--blue-mid);border-radius:var(--radius-sm)">
+        <span style="font-size:13px;font-weight:500;color:var(--blue)" id="inv-month-label"></span>
+        <span style="font-size:12px;color:var(--text-2)" id="inv-file-info"></span>
+      </div>
+
+      <!-- PREVIEW VIEW -->
+      <div id="inv-preview-view">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+          Hours from actuals (TMSH) for the selected month. Teams without actuals show as ⚠️.
+        </div>
+        <div class="table-wrap">
+          <table style="width:100%;table-layout:fixed">
+            <colgroup>
+              <col style="width:240px">
+              <col style="width:100px">
+              <col style="width:120px">
+              <col>
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th style="text-align:right">Actuals Hours</th>
+                <th style="text-align:right">Amount (€)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="inv-preview-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- GENERATE VIEW -->
+      <div id="inv-generate-view" style="display:none">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+          Select which invoice support files to generate. Files with ⚠️ have no actuals for this month.
+        </div>
+        <div class="table-wrap" style="margin-bottom:1rem">
+          <table style="width:100%;table-layout:auto">
+            <thead>
+              <tr>
+                <th style="width:36px;text-align:center">
+                  <input type="checkbox" id="inv-check-all" onchange="toggleAllInv(this.checked)" title="Select all">
+                </th>
+                <th>Team</th>
+                <th>File name</th>
+                <th style="text-align:right">Amount (€)</th>
+                <th style="text-align:center">Status</th>
+              </tr>
+            </thead>
+            <tbody id="inv-generate-body"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:12px;color:var(--text-2)" id="inv-selected-count">0 files selected</span>
+          <button class="btn" onclick="openInvEmailWindow()" style="font-size:13px;padding:8px 20px">
+            ✉ Preview email
+          </button>
+          <button class="btn btn-primary" onclick="generateInvoices()" id="btn-generate-files" style="font-size:13px;padding:8px 20px">
+            ⬇ Generate selected files
+          </button>
+          <button class="btn" onclick="generateOverviewFile()" style="font-size:13px;padding:8px 20px">
+            ⬇ Generate overview file
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Extra Invoicing Modal -->
+  <div class="modal-bg" id="extra-invoicing-modal">
+    <div class="modal" style="max-width:480px">
+      <h2 id="extra-invoicing-modal-title">Add extra invoicing line</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Team</label>
+          <select id="ei-team">
+            <option value="">Select team...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Month</label>
+          <select id="ei-month">
+            <option value="">Select month...</option>
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Description</label>
+          <input id="ei-description" type="text" placeholder="e.g. Delivery package Q1 2026">
+        </div>
+        <div class="form-group">
+          <label>Value (€)</label>
+          <input id="ei-value" type="number" step="0.01" placeholder="100.00">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="btn-ei-delete" onclick="deleteExtraInvoicing()" style="display:none">Delete</button>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="document.getElementById('extra-invoicing-modal').classList.remove('open')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveExtraInvoicing()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoice Excel Preview Modal -->
+  <div class="modal-bg" id="inv-preview-modal">
+    <div class="modal" style="max-width:960px;width:95vw">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem">
+        <div>
+          <div style="font-size:15px;font-weight:600" id="inv-modal-title">Invoice Preview</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px;font-family:monospace" id="inv-modal-filename"></div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="generateSingleInvoice()" id="btn-inv-modal-download">⬇ Download this file</button>
+          <button class="btn" onclick="closeInvModal()">✕</button>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:auto;max-height:60vh">
+        <table id="inv-modal-table" style="width:100%;border-collapse:collapse;font-size:12px;font-family:-apple-system,sans-serif"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-dashboard">
+    <div class="toolbar">
+      <h2 style="flex:1">Dashboard</h2>
+      <div class="view-toggle">
+        <button class="active" id="btn-dash-readiness" onclick="switchDashView('readiness')">Month Readiness</button>
+        <button id="btn-dash-developers" onclick="switchDashView('developers')">Developers</button>
+      </div>
+    </div>
+    <div id="dash-developers-view" style="display:none"><div id="dash-dev-charts"></div></div>
+    <div id="dash-readiness-view">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap">
+        <select id="dash-month" onchange="renderReadiness()" style="font-size:13px;padding:6px 10px;min-width:160px">
+          <option value="1">January 2026</option><option value="2">February 2026</option>
+          <option value="3">March 2026</option><option value="4">April 2026</option>
+          <option value="5">May 2026</option><option value="6">June 2026</option>
+          <option value="7">July 2026</option><option value="8">August 2026</option>
+          <option value="9">September 2026</option><option value="10">October 2026</option>
+          <option value="11">November 2026</option><option value="12">December 2026</option>
+        </select>
+        <button class="btn" onclick="renderReadiness()" style="font-size:13px">↻ Refresh</button>
+        <button class="btn" onclick="openChecksInfo()" style="font-size:13px">ℹ Checks info</button>
+      </div>
+      <div id="dash-summary" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap"></div>
+      <div id="dash-teams"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-coming-soon">
+    <div style="text-align:center;padding:4rem 2rem">
+      <div style="font-size:32px;margin-bottom:1rem">🚧</div>
+      <div style="font-size:18px;font-weight:500;margin-bottom:0.5rem">Coming soon</div>
+      <div style="color:var(--text-2);font-size:14px">This module is under construction</div>
+    </div>
+
+
+  </div>
+
+  <div class="page" id="page-grossmargin">
+    <div class="toolbar">
+      <h2 style="flex:1">Gross Margin 2026</h2>
+      <div class="view-toggle">
+        <button class="active" id="btn-gm-split" onclick="switchGmView('split')">EU / India</button>
+        <button id="btn-gm-detail" onclick="switchGmView('detail')">Developer list</button>
+        <button id="btn-gm-devdetail" onclick="switchGmView('devdetail')">GM Detail</button>
+        <button id="btn-gm-levers" onclick="switchGmView('levers')">GM Levers</button>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stats-row" id="gm-stats-row">
+      <div class="stat-card">
+        <div class="stat-label">YTD Revenue</div>
+        <div class="stat-value" id="gm-stat-rev" style="color:var(--blue)">—</div>
+        <div class="stat-sub" id="gm-stat-rev-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">YTD COGS</div>
+        <div class="stat-value" id="gm-stat-cogs">—</div>
+        <div class="stat-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">YTD Gross Margin</div>
+        <div class="stat-value" id="gm-stat-gm" style="color:var(--green)">—</div>
+        <div class="stat-sub" id="gm-stat-gm-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Full year GM forecast</div>
+        <div class="stat-value" id="gm-stat-forecast">—</div>
+        <div class="stat-sub">all 12 months</div>
+      </div>
+    </div>
+
+    <!-- EU / India split view -->
+    <div id="gm-split-view">
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="table-layout:fixed;min-width:900px">
+          <thead>
+            <tr>
+              <th style="width:180px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+              <th style="width:72px;text-align:right">Jan</th><th style="width:72px;text-align:right">Feb</th>
+              <th style="width:72px;text-align:right">Mar</th><th style="width:72px;text-align:right">Apr</th>
+              <th style="width:72px;text-align:right">May</th><th style="width:72px;text-align:right">Jun</th>
+              <th style="width:72px;text-align:right">Jul</th><th style="width:72px;text-align:right">Aug</th>
+              <th style="width:72px;text-align:right">Sep</th><th style="width:72px;text-align:right">Oct</th>
+              <th style="width:72px;text-align:right">Nov</th><th style="width:72px;text-align:right">Dec</th>
+              <th style="width:80px;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody id="gm-split-body"><tr><td colspan="14" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Developer list view -->
+    <div id="gm-detail-view" style="display:none">
+      <div style="margin-bottom:1rem;font-size:12px;color:var(--text-2)">All developers grouped by Europe / India — GM% per month</div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table style="table-layout:fixed;min-width:900px">
+          <thead>
+            <tr>
+              <th style="width:180px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+              <th style="width:72px;text-align:right">Jan</th><th style="width:72px;text-align:right">Feb</th>
+              <th style="width:72px;text-align:right">Mar</th><th style="width:72px;text-align:right">Apr</th>
+              <th style="width:72px;text-align:right">May</th><th style="width:72px;text-align:right">Jun</th>
+              <th style="width:72px;text-align:right">Jul</th><th style="width:72px;text-align:right">Aug</th>
+              <th style="width:72px;text-align:right">Sep</th><th style="width:72px;text-align:right">Oct</th>
+              <th style="width:72px;text-align:right">Nov</th><th style="width:72px;text-align:right">Dec</th>
+              <th style="width:80px;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody id="gm-detail-body"><tr><td colspan="14" class="empty">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- GM Detail (per developer per month) view -->
+    <div id="gm-devdetail-view" style="display:none">
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="view-toggle">
+          <button class="active" id="btn-gm-dd-eu" onclick="setGmDevDetailRegion('eu')">Europe</button>
+          <button id="btn-gm-dd-in" onclick="setGmDevDetailRegion('india')">India</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <button class="btn" onclick="changeGmDevDetailMonth(-1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8592;</button>
+          <span id="gm-devdetail-month-label" style="font-size:15px;font-weight:500;min-width:120px;text-align:center"></span>
+          <button class="btn" onclick="changeGmDevDetailMonth(1)" style="padding:4px 10px;font-size:14px;color:var(--text-2)">&#8594;</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table style="table-layout:fixed;width:100%">
+          <thead>
+            <tr>
+              <th style="width:200px;position:sticky;left:0;background:var(--bg);z-index:2">Developer</th>
+              <th style="width:80px;text-align:right">Hours</th>
+              <th style="width:90px;text-align:right">Revenue</th>
+              <th style="width:90px;text-align:right">COGS</th>
+              <th style="width:90px;text-align:right">GM €</th>
+              <th style="width:80px;text-align:right">GM %</th>
+              <th style="width:100px;text-align:center">Source</th>
+            </tr>
+          </thead>
+          <tbody id="gm-devdetail-body"><tr><td colspan="7" class="empty">Select a team above</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- GM Levers view -->
+    <div id="gm-levers-view" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="gm-levers-year" onchange="renderGmLevers()" style="font-size:13px;padding:6px 10px">
+            <option value="2026">2026</option>
+          </select>
+          <select id="gm-levers-filter" onchange="renderGmLevers()" style="font-size:13px;padding:6px 10px">
+            <option value="all">All types</option>
+            <option value="COLA / Annual Rate Escalation">COLA</option>
+            <option value="Bill rate Adjustment">Bill rate Adjustment</option>
+            <option value="Low Margin to High Margin Replacement">LM to HM Replacement</option>
+            <option value="Subcontractor Cost Optimization">Subcontractor Cost Optimization</option>
+            <option value="Leave Loss Reduction for Daily and Hourly Billing">Leave Loss Reduction</option>
+            <option value="9th Hour Billing">9th Hour Billing</option>
+            <option value="Utilization Improvement">Utilization Improvement</option>
+            <option value="Pyramid Correction / N-1 Rotation">Pyramid Correction</option>
+            <option value="T&amp;M Resource Client Interview">T&amp;M Resource Client Interview</option>
+            <option value="Offshoring / Flex-Shoring">Offshoring / Flex-Shoring</option>
+            <option value="Automation / AI">Automation / AI</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="openColaSetup()">+ COLA Setup</button>
+      </div>
+
+      <div id="gm-levers-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.25rem"></div>
+
+      <div class="table-wrap">
+        <table style="width:100%;table-layout:auto;font-size:13px">
+          <thead>
+            <tr>
+              <th style="text-align:left;min-width:200px;position:sticky;left:0;background:var(--surface);z-index:2">Improvement type</th>
+              <th style="text-align:center;width:40px"></th>
+              <th style="text-align:right;width:65px">Jan</th>
+              <th style="text-align:right;width:65px">Feb</th>
+              <th style="text-align:right;width:65px">Mar</th>
+              <th style="text-align:right;width:65px">Apr</th>
+              <th style="text-align:right;width:65px">May</th>
+              <th style="text-align:right;width:65px">Jun</th>
+              <th style="text-align:right;width:65px">Jul</th>
+              <th style="text-align:right;width:65px">Aug</th>
+              <th style="text-align:right;width:65px">Sep</th>
+              <th style="text-align:right;width:65px">Oct</th>
+              <th style="text-align:right;width:65px">Nov</th>
+              <th style="text-align:right;width:65px">Dec</th>
+              <th style="text-align:right;width:80px">Total</th>
+              <th style="text-align:center;width:70px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="gm-levers-body"><tr><td colspan="16" class="loading">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLA Setup Modal -->
+  <div class="modal-bg" id="cola-setup-modal">
+    <div class="modal" style="max-width:900px;width:95vw">
+      <div class="modal-header">
+        <span style="font-weight:600">COLA / Annual Rate Escalation — Bulk Setup</span>
+      </div>
+      <div class="modal-body" style="padding:0">
+        <div style="overflow-x:auto;max-height:50vh;overflow-y:auto">
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <thead style="position:sticky;top:0;background:var(--surface);z-index:2">
+              <tr>
+                <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-2);font-weight:600">Developer</th>
+                <th style="padding:8px 6px;font-size:11px;color:var(--text-2);font-weight:600">From</th>
+                <th style="padding:8px 6px;font-size:11px;color:var(--text-2);font-weight:600">To</th>
+                <th style="padding:8px 6px;font-size:11px;color:var(--text-2);font-weight:600">Rate 2025</th>
+                <th style="padding:8px 6px;font-size:11px;color:var(--text-2);font-weight:600">Rate 2026</th>
+                <th style="padding:8px 12px;font-size:11px;color:var(--text-2);font-weight:600">Diff</th>
+                <th style="padding:8px 6px;font-size:11px;color:var(--text-2);font-weight:600;text-align:center">Include</th>
+              </tr>
+            </thead>
+            <tbody id="cola-setup-tbody">
+              <tr><td colspan="7" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="runColaCalculation()">&#9654; Run calculation</button>
+        </div>
+        <div id="cola-preview-section" style="display:none;border-top:2px solid var(--border)">
+          <div style="padding:10px 16px;font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px">
+            Preview — select developers to save
+          </div>
+          <div style="overflow-x:auto;max-height:40vh;overflow-y:auto">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <thead id="cola-preview-header" style="position:sticky;top:0;background:var(--surface);z-index:2"></thead>
+              <tbody id="cola-preview-tbody"></tbody>
+            </table>
+          </div>
+          <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:12px;color:var(--text-3)">Green = stored (actuals) &middot; Italic = forecast (not stored)</div>
+            <button class="btn btn-primary" onclick="saveColaImprovements()">&#128190; Save selected</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end">
+        <button class="btn" onclick="closeModal('cola-setup-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Developer to Lever Modal -->
+  <div class="modal-bg" id="add-dev-lever-modal">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span id="add-dev-lever-title" style="font-weight:600">Add developer to lever</span>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="form-label">Developer</label>
+          <select id="add-dev-lever-select" style="width:100%;font-size:13px;padding:7px 10px"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">From month</label>
+            <input type="month" id="add-dev-lever-from" min="2026-01" max="2026-12" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+          <div>
+            <label class="form-label">To month</label>
+            <input type="month" id="add-dev-lever-to" min="2026-01" max="2026-12" style="width:100%;font-size:13px;padding:7px 10px">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-2)">Rate diff will be calculated from Dec 2025 → Jan 2026 rates × forecast hours.</div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn" onclick="closeModal('add-dev-lever-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveAddDevToLever()">Add & Calculate</button>
+      </div>
+    </div>
+  </div>
+
+    <!-- CTC Calculator Modal -->
+
+    <div class="modal-bg" id="ctc-calc-modal">
+      <div class="modal" style="max-width:460px">
+        <h2 id="ctc-calc-title">Calculate CTC</h2>
+        <div id="ctc-calc-info" style="font-size:12px;color:var(--text-2);margin-bottom:1.25rem"></div>
+
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Month</label>
+          <select id="ctc-calc-month" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px"
+            onchange="updateCtcCalcPreview(editingCtcKey?.devId, editingCtcKey?.year)">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+
+        <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:1rem">
+          <div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Formula</div>
+          <div style="font-size:12px;color:var(--text)" id="ctc-calc-formula">—</div>
+        </div>
+
+        <div id="ctc-calc-preview" style="border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:1.25rem;font-size:15px;font-weight:600;text-align:center">
+          <span id="ctc-calc-value">—</span>
+        </div>
+
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:1.25rem">
+          <input type="checkbox" id="ctc-calc-apply-all"> Apply same value till end of year
+        </label>
+
+        <div class="modal-footer">
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('ctc-calc-modal')">Cancel</button>
+            <button class="btn btn-primary" id="ctc-calc-apply-btn" onclick="applyCtcCalc()">Apply &amp; Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- CTC Modal -->
+    <div class="modal-bg" id="ctc-modal">
+      <div class="modal" style="max-width:400px">
+        <h2 id="ctc-modal-title">Set Cost to Center</h2>
+        <div id="ctc-modal-info" style="font-size:12px;color:var(--text-2);margin-bottom:1rem"></div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">CTC amount (€)</label>
+          <input type="number" id="ctc-value" min="0" step="0.01" placeholder="e.g. 4250.00"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        </div>
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:1.25rem">
+          <input type="checkbox" id="ctc-apply-all"> Apply same value till end of year
+        </label>
+        <div class="modal-footer">
+          <button id="ctc-btn-delete" class="btn btn-danger" onclick="deleteCtc()" style="display:none">Delete</button>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('ctc-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveCtc()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Overhead Bulk Modal -->
+    <div class="modal-bg" id="overhead-bulk-modal">
+      <div class="modal" style="max-width:500px">
+        <h2>Overhead — Bulk Update</h2>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:1.25rem">
+          Select locations, types and months to update. All selected combinations will be set to the same value.
+        </div>
+
+        <div style="display:flex;gap:2rem;margin-bottom:1.25rem;flex-wrap:wrap">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px">LOCATIONS</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" id="ob-loc-all" onchange="toggleOverheadBulkAll('loc')"> <strong>All</strong>
+            </label>
+            <div id="ob-loc-list"></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px">TYPE</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" id="ob-type-FTE" value="FTE" checked> FTE
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="ob-type-Contractor" value="Contractor" checked> Contractor
+            </label>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px">MONTHS</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer">
+              <input type="checkbox" id="ob-month-all" onchange="toggleOverheadBulkAll('month')"> <strong>All</strong>
+            </label>
+            <div id="ob-month-list" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px"></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.25rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Overhead amount (€)</label>
+          <input type="number" id="ob-value" min="0" step="0.01" placeholder="e.g. 330"
+            style="width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px">
+        </div>
+
+        <div class="modal-footer">
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('overhead-bulk-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="applyOverheadBulk()">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checks Info Modal -->
+    <div class="modal-bg" id="checks-info-modal">
+      <div class="modal" style="max-width:580px">
+        <h2>Month Readiness — Checks Explained</h2>
+        <div style="font-size:13px;line-height:1.7;max-height:70vh;overflow-y:auto;padding-right:8px">
+          <div style="font-weight:600;font-size:14px;color:var(--red);margin-bottom:6px">🔴 Errors — block invoicing</div>
+          <div style="margin-bottom:12px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">No active billable assignment</div>
+            <div style="color:var(--text-2);margin-top:3px">The developer has no assignment to any team that is marked as billable for this month. Go to Developers → edit the developer and check their assignments.</div>
+          </div>
+          <div style="margin-bottom:12px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">No billing rate</div>
+            <div style="color:var(--text-2);margin-top:3px">The billing rate (€/hour) is not set for this month. Without a rate, revenue cannot be calculated. Go to Rates and set their hourly rate.</div>
+          </div>
+          <div style="margin-bottom:20px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">No actuals imported (hours > 0)</div>
+            <div style="color:var(--text-2);margin-top:3px">No actual timesheet hours imported from SAP, or hours are zero. Invoicing is always based on actuals — forecast is never used. Go to Timesheets → Import.</div>
+          </div>
+          <div style="font-weight:600;font-size:14px;color:var(--amber);margin-bottom:6px">🟡 Warnings — review recommended</div>
+          <div style="margin-bottom:12px;padding:10px 12px;background:#fff9f0;border-radius:var(--radius-sm);border-left:3px solid var(--amber)">
+            <div style="font-weight:600">Salary missing</div>
+            <div style="color:var(--text-2);margin-top:3px">No salary or daily rate entered for this month. Needed to calculate CTC and COGS. Go to Costs → Salaries.</div>
+          </div>
+          <div style="margin-bottom:12px;padding:10px 12px;background:#fff9f0;border-radius:var(--radius-sm);border-left:3px solid var(--amber)">
+            <div style="font-weight:600">CTC missing</div>
+            <div style="color:var(--text-2);margin-top:3px">Cost to Center not calculated or entered. Without it, Gross Margin cannot be calculated. Go to Costs → Cost to center and use ⚡ Calc.</div>
+          </div>
+          <div style="margin-bottom:20px;padding:10px 12px;background:#fff9f0;border-radius:var(--radius-sm);border-left:3px solid var(--amber)">
+            <div style="font-weight:600">Overhead not defined</div>
+            <div style="color:var(--text-2);margin-top:3px">No overhead set for this location/type for this month. If intentionally zero, set it to 0 explicitly. Go to Costs → Overhead.</div>
+          </div>
+          <div style="font-weight:600;font-size:14px;color:var(--green);margin-bottom:6px">🟢 Green — fully ready</div>
+          <div style="padding:10px 12px;background:var(--green-lt);border-radius:var(--radius-sm);border-left:3px solid var(--green);color:var(--text-2)">
+            All checks passed. Active assignment, billing rate, actual hours, salary, CTC and overhead all defined.
+          </div>
+          <div style="margin-top:16px;font-size:12px;color:var(--text-3);border-top:1px solid var(--border);padding-top:12px">
+            Errors prevent accurate invoicing. Warnings affect Gross Margin accuracy but do not block invoice generation.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-right">
+            <button class="btn btn-primary" onclick="closeModal('checks-info-modal')">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overhead Modal -->
+    <div class="modal-bg" id="overhead-modal">
+      <div class="modal" style="max-width:380px">
+        <h2 id="overhead-modal-title">Set Overhead</h2>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Overhead amount (€)</label>
+          <input type="number" id="overhead-value" min="0" step="0.01" placeholder="e.g. 330"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        </div>
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:1.25rem">
+          <input type="checkbox" id="overhead-apply-all"> Apply same value till end of year
+        </label>
+        <div class="modal-footer">
+          <button id="overhead-btn-delete" class="btn btn-danger" onclick="deleteOverhead()" style="display:none">Delete</button>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('overhead-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveOverhead()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary Modal -->
+    <div class="modal-bg" id="salary-modal">
+      <div class="modal" style="max-width:400px">
+        <h2 id="salary-modal-title">Set salary</h2>
+        <div id="salary-modal-info" style="font-size:12px;color:var(--text-2);margin-bottom:1rem"></div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px" id="salary-field-label">Monthly salary</label>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="salary-value" min="0" step="1" placeholder="e.g. 3767"
+              style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+            <select id="salary-currency" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:90px">
+              <option value="EUR">EUR</option>
+              <option value="INR">INR</option>
+              <option value="RON">RON</option>
+              <option value="CAD">CAD</option>
+              <option value="GBP">GBP</option>
+            </select>
+          </div>
+        </div>
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:1.25rem">
+          <input type="checkbox" id="salary-apply-all"> Apply same value till end of year
+        </label>
+        <div class="modal-footer">
+          <button id="salary-btn-delete" class="btn btn-danger" onclick="deleteSalary()" style="display:none">Delete</button>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('salary-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveSalary()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Dev Cost Modal -->
+    <div class="modal-bg" id="devcost-modal">
+      <div class="modal" style="max-width:460px">
+        <h2 id="devcost-modal-title">Set developer cost</h2>
+        <div id="devcost-modal-info" style="font-size:12px;color:var(--text-2);margin-bottom:1rem"></div>
+
+        <div style="display:flex;gap:8px;margin-bottom:1.25rem">
+          <button id="devcost-btn-calc" onclick="setDevCostMode('calc')"
+            class="btn btn-primary" style="flex:1;font-size:13px">📐 Calculate from salary</button>
+          <button id="devcost-btn-manual" onclick="setDevCostMode('manual')"
+            class="btn" style="flex:1;font-size:13px">✏️ Manual COGS</button>
+        </div>
+
+        <div id="devcost-calc-section">
+          <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;margin-bottom:1rem;color:var(--text-2)" id="devcost-salary-preview">
+            Salary: —
+          </div>
+          <div style="margin-bottom:1rem" id="devcost-overhead-row">
+            <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">Overhead (€) <span style="color:var(--text-3)">(default 330)</span></label>
+            <input type="number" id="devcost-overhead" min="0" step="1" placeholder="330"
+              oninput="updateDevCostPreview()"
+              style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+          </div>
+          <div style="background:var(--green-lt);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;font-weight:500;color:var(--green);margin-bottom:1rem" id="devcost-calc-preview">
+            COGS: —
+          </div>
+        </div>
+
+        <div id="devcost-manual-section" style="display:none">
+          <div style="margin-bottom:1rem">
+            <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:4px">COGS amount (€)</label>
+            <input type="number" id="devcost-cogs-manual" min="0" step="0.01" placeholder="e.g. 2234.70"
+              style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+          </div>
+        </div>
+
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:1.25rem">
+          <input type="checkbox" id="devcost-apply-all"> Apply same value till end of year
+        </label>
+
+        <div class="modal-footer">
+          <button id="devcost-btn-delete" class="btn btn-danger" onclick="deleteDevCost()" style="display:none">Delete</button>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal('devcost-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveDevCost()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Timesheets Checks Info Modal -->
+    <div class="modal-bg" id="ts-checks-info-modal">
+      <div class="modal" style="max-width:620px">
+        <h2>Timesheet Checks — Explained</h2>
+        <div style="font-size:13px;line-height:1.7;max-height:72vh;overflow-y:auto;padding-right:8px">
+
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem">
+            Checks run against the uploaded SAP export. Each row in SAP represents one activity entry for one developer on one day.
+            EU developers are expected to log 8h per working day. India developers are expected to log 9h (or 8h on leave days).
+          </div>
+
+          <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">Check 1 — Daily hours</div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Missing day</div>
+            <div style="color:var(--text-2);margin-top:3px">A developer appears in the SAP export (has entries in this month) but has no entry at all for a specific working day. Public holidays and weekends are excluded. Contractors are flagged as informational only, not an error.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Wrong hours — EU developer</div>
+            <div style="color:var(--text-2);margin-top:3px">EU developer logged something other than 8h in regular (non-On-Call) activities on a working day. 0h regular hours is OK if On-Call covers the day. Any other amount triggers this check.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Wrong hours — India developer</div>
+            <div style="color:var(--text-2);margin-top:3px">India developer logged something other than 9h (normal day) or 8h (leave day) total. Any other total triggers this check.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Leave day issue — India developer</div>
+            <div style="color:var(--text-2);margin-top:3px">India developer logged exactly 8h total (leave day convention) but some of those hours are on a billable activity (1004). Leave days should be 100% non-billable activities.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Over hours</div>
+            <div style="color:var(--text-2);margin-top:3px">Developer's total billable hours (activity 1004) for the whole month exceed the maximum working hours defined for their location. Fixed-price WBS rows are excluded from this calculation.</div>
+          </div>
+
+          <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:14px">Check 2 — WBS codes</div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Wrong WBS</div>
+            <div style="color:var(--text-2);margin-top:3px">Developer logged hours against a WBS code that is not assigned to them in the system. Each developer has a set of allowed WBS codes defined in Developers → assignments. Logging against an unassigned WBS is flagged.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">WBS mismatch</div>
+            <div style="color:var(--text-2);margin-top:3px">There is a mismatch between the activity type and the WBS type: either a billable activity (1004 or On-Call) logged on a non-billable WBS (ending -NB), or a non-billable activity logged on a billable WBS (ending -B).</div>
+          </div>
+
+          <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:14px">Check 3 — On-Call</div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">On-Call issue — EU developer</div>
+            <div style="color:var(--text-2);margin-top:3px">EU developer has an On-Call entry but it is not exactly 16h (the expected On-Call shift). On a public holiday, On-Call must be 24h instead. Any other value is flagged.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">On-Call issue — India developer</div>
+            <div style="color:var(--text-2);margin-top:3px">India developers are not expected to have any On-Call entries. Any On-Call activity or classification found for an India developer is flagged immediately.</div>
+          </div>
+
+          <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:14px">Check 4 — Public holidays &amp; weekends</div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Holiday work</div>
+            <div style="color:var(--text-2);margin-top:3px">Developer logged regular (non-On-Call) hours on a public holiday defined for their location. Acceptable entries on a public holiday are: no entry at all, or 24h On-Call only. Any other entry is flagged with the holiday name shown.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#fff8f8;border-radius:var(--radius-sm);border-left:3px solid var(--red)">
+            <div style="font-weight:600">Weekend work</div>
+            <div style="color:var(--text-2);margin-top:3px">Developer logged non-On-Call hours on a Saturday or Sunday. On-Call entries on weekends are acceptable. Any regular activity logged on a weekend is flagged.</div>
+          </div>
+
+          <div style="margin-bottom:10px;padding:10px 12px;background:#f5f9ff;border-radius:var(--radius-sm);border-left:3px solid var(--blue)">
+            <div style="font-weight:600">Contractor — informational</div>
+            <div style="color:var(--text-2);margin-top:3px">Contractor has a day where billable hours differ from 8h, or is missing a day entry. This is informational only — contractors often have flexible hours. No action required unless the hours look wrong to you.</div>
+          </div>
+
+          <div style="margin-top:16px;font-size:12px;color:var(--text-3);border-top:1px solid var(--border);padding-top:12px">
+            Activity codes: 1004 = billable T&amp;M | 1007 + "On-Call" classification = EU On-Call | 2xxx/9xxx = non-billable.
+            Timesheet status: 10 = filled | 20 = released | 30 = approved. Issues on approved rows (status 30) are highlighted separately.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-right">
+            <button class="btn btn-primary" onclick="closeModal('ts-checks-info-modal')">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<div class="modal-bg" id="add-modal">
+<div class="modal" style="max-width:780px">
+  <h2 id="modal-title">Add developer</h2>
+  <div class="form-grid">
+    <div class="section-title">Identity</div>
+    <div class="form-group"><label>First name *</label><input id="f-firstname" type="text" placeholder="Jana"></div>
+    <div class="form-group"><label>Last name *</label><input id="f-lastname" type="text" placeholder="Hajduková"></div>
+    <div class="form-group"><label>NESS ID *</label><input id="f-nessid" type="text" placeholder="3501351"></div>
+    <div class="form-group"><label>HERE ID</label><input id="f-hereid" type="text" placeholder="31828"></div>
+    <div class="form-group"><label>Ness email</label><input id="f-nessemail" type="text"></div>
+    <div class="form-group"><label>HERE email</label><input id="f-hereemail" type="text"></div>
+    <div class="form-group"><label>HERE account</label><input id="f-hereaccount" type="text" placeholder="hajdukov"></div>
+    <div class="form-group"><label>Status</label>
+      <select id="f-status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+    </div>
+    <div class="form-group"><label>Project start date <span style="font-size:11px;color:var(--text-2)">(first day at Ness on this project)</span></label>
+      <input id="f-project-start" type="date">
+    </div>
+    <div class="form-group"><label>Project end date <span style="font-size:11px;color:var(--text-2)">(last day at Ness — leave empty if still active)</span></label>
+      <input id="f-project-end" type="date">
+    </div>
+    <div class="section-title">Location & Ness Info</div>
+    <div class="form-group"><label>Country</label>
+      <select id="f-country"><option value="">Select...</option><option>Slovakia</option><option>Romania</option><option>Latvia</option><option>India</option><option>Other</option></select>
+    </div>
+    <div class="form-group"><label>Location (working hours calendar)</label>
+      <select id="f-location"><option value="">Select...</option></select>
+    </div>
+    <div class="form-group"><label>Billing Location <span style="font-weight:400;color:var(--text-3);font-size:11px">(override for PO matching — leave blank to auto-derive)</span></label>
+      <select id="f-billing-location">
+        <option value="">Auto (derive from location)</option>
+        <option value="SVK">SVK — Slovakia</option>
+        <option value="IND">IND — India</option>
+        <option value="ROM">ROM — Romania</option>
+        <option value="LAT">LAT — Latvia</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Worker type</label>
+      <select id="f-workertype"><option value="">Select...</option><option>Full Time</option><option>Part Time</option><option>Contractor</option></select>
+    </div>
+    <div class="form-group"><label>Job Title</label><input id="f-job-title" type="text" placeholder="e.g. Software Engineer"></div>
+    <div class="form-group"><label>Job Level</label><input id="f-job-level" type="text" placeholder="e.g. L3, Senior, IC4"></div>
+    <div class="section-title">HERE side</div>
+    <div class="form-group full" style="background:var(--border-lt);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--text-2)">
+      <strong style="color:var(--text)">HERE Role / Seniority</strong> is derived automatically from the billing rate assigned to this developer in the Rates module.
+    </div>
+    <div class="section-title">Assignments</div>
+    <div class="full" id="assignments-list"></div>
+    <div class="full"><button class="btn" onclick="addAssignmentRow()" style="font-size:12px;padding:5px 12px">+ Add assignment</button></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-danger" id="btn-delete" onclick="deleteDev()" style="display:none">Delete</button>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDev()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="detail-modal">
+<div class="modal" style="max-width:900px">
+  <h2 id="detail-name" style="margin-bottom:1.25rem"></h2>
+  <div id="detail-content"></div>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('detail-modal')">Close</button>
+      <button class="btn btn-primary" onclick="editFromDetail()">Edit</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="loc-modal">
+<div class="modal" style="max-width:640px">
+  <h2 id="loc-modal-title">Add location</h2>
+  <div style="margin-bottom:1rem">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Location name *</label>
+      <input id="loc-name" type="text" placeholder="e.g. Slovakia, India Pune, India Bangalore">
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;font-weight:500">Working hours per month</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem">
+    <div class="form-group"><label>January</label><input id="loc-jan" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>February</label><input id="loc-feb" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>March</label><input id="loc-mar" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>April</label><input id="loc-apr" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>May</label><input id="loc-may" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>June</label><input id="loc-jun" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>July</label><input id="loc-jul" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>August</label><input id="loc-aug" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>September</label><input id="loc-sep" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>October</label><input id="loc-oct" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>November</label><input id="loc-nov" type="number" min="0" max="300"></div>
+    <div class="form-group"><label>December</label><input id="loc-dec" type="number" min="0" max="300"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-danger" id="loc-btn-delete" onclick="deleteLoc()" style="display:none">Delete</button>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('loc-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLoc()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="ts-detail-modal">
+<div class="modal" style="max-width:1200px;width:98vw">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
+    <h2 style="margin:0;flex:1;font-size:16px" id="ts-detail-title"></h2>
+    <div style="display:flex;gap:8px;font-size:11px">
+      <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:var(--green-lt);border:1px solid #a5d6a7;display:inline-block;border-radius:2px"></span>Billable</span>
+      <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:var(--bg);border:1px solid var(--border);display:inline-block;border-radius:2px"></span>Non-billable</span>
+      <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:#fff0f0;border:1px solid #ffaaaa;display:inline-block;border-radius:2px"></span>Issue</span>
+      <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:#eeeeee;border:1px solid #ccc;display:inline-block;border-radius:2px"></span>Weekend</span>
+    </div>
+    <button class="btn" onclick="closeModal('ts-detail-modal')" style="padding:4px 12px">✕ Close</button>
+  </div>
+  <div style="max-height:70vh;overflow-y:auto">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed" id="ts-detail-table">
+      <thead style="position:sticky;top:0;z-index:1">
+        <tr style="background:#f0f0f0;border-bottom:2px solid #ddd">
+          <th style="text-align:left;padding:8px 10px;font-size:13px;width:90px">Date</th>
+          <th style="text-align:left;padding:8px 6px;font-size:13px;width:36px">Day</th>
+          <th style="text-align:left;padding:8px 6px;font-size:13px">WBS External</th>
+          <th style="text-align:left;padding:8px 6px;font-size:13px;width:60px">Act.</th>
+          <th style="text-align:left;padding:8px 6px;font-size:13px;width:140px">Description</th>
+          <th style="text-align:left;padding:8px 6px;font-size:13px;width:80px">Class.</th>
+          <th style="text-align:center;padding:8px 6px;font-size:13px;width:44px">St.</th>
+          <th style="text-align:right;padding:8px 10px;font-size:13px;width:54px">Hours</th>
+        </tr>
+      </thead>
+      <tbody id="ts-detail-body"></tbody>
+      <tfoot>
+        <tr style="background:#f0f0f0;border-top:2px solid #ddd">
+          <td colspan="7" style="font-weight:600;font-size:14px;padding:8px 10px">Total</td>
+          <td style="font-weight:600;font-size:14px;text-align:right;padding:8px 10px" id="ts-detail-total"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="edit-team-modal">
+<div class="modal" style="max-width:400px">
+  <h2>Edit team</h2>
+  <input type="hidden" id="edit-team-original-name">
+  <input type="hidden" id="edit-team-original-region">
+  <div class="form-group" style="margin-bottom:1rem">
+    <label>Team name *</label>
+    <input type="text" id="edit-team-name" style="width:100%">
+  </div>
+  <div class="form-group" style="margin-bottom:1.25rem">
+    <label>Region *</label>
+    <select id="edit-team-region" style="width:100%">
+      <option value="europe">Europe</option>
+      <option value="india">India</option>
+    </select>
+  </div>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('edit-team-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditTeam()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="delete-team-modal">
+<div class="modal" style="max-width:400px">
+  <h2>Delete team</h2>
+  <p style="font-size:13px;color:var(--text-2);margin-bottom:0.5rem">Are you sure you want to delete this team?</p>
+  <div style="background:var(--red-lt);border:1px solid #FCA5A5;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1.25rem">
+    <div style="font-weight:600;font-size:14px" id="delete-team-name"></div>
+    <div style="font-size:12px;color:var(--text-2)" id="delete-team-region"></div>
+  </div>
+  <p style="font-size:12px;color:var(--text-3);margin-bottom:1.25rem">This only removes the team from the list. Existing developer assignments are not affected.</p>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('delete-team-modal')">Cancel</button>
+      <button class="btn btn-danger" id="btn-confirm-delete-team">Delete</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="add-team-modal">
+<div class="modal" style="max-width:400px">
+  <h2>Add team</h2>
+  <div class="form-group" style="margin-bottom:1rem">
+    <label>Team name *</label>
+    <input type="text" id="add-team-name" placeholder="e.g. Lumiere program IN" style="width:100%">
+  </div>
+  <div class="form-group" style="margin-bottom:1.25rem">
+    <label>Region *</label>
+    <select id="add-team-region" style="width:100%">
+      <option value="europe">Europe</option>
+      <option value="india">India</option>
+    </select>
+  </div>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('add-team-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewTeam()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="team-discount-modal">
+<div class="modal" style="max-width:440px">
+  <h2 id="team-discount-modal-title">Add team discount</h2>
+  <div class="form-group" style="margin-bottom:1rem">
+    <label>Team *</label>
+    <select id="td-team" style="width:100%">
+      <option value="">Select team...</option>
+    </select>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div class="form-group">
+      <label>Start date *</label>
+      <input type="date" id="td-start" style="width:100%">
+    </div>
+    <div class="form-group">
+      <label>End date <span style="color:var(--text-3)">(empty = active)</span></label>
+      <input type="date" id="td-end" style="width:100%">
+    </div>
+  </div>
+  <div class="form-group" style="margin-bottom:1.25rem">
+    <label>Note *</label>
+    <input type="text" id="td-note" placeholder="e.g. Lumiere program discount line" style="width:100%">
+  </div>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('team-discount-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeamDiscount()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="discount-modal">
+<div class="modal" style="max-width:480px">
+  <h2 id="discount-modal-title">Add discount</h2>
+  <div class="form-group" style="margin-bottom:1rem">
+    <label>Developer *</label>
+    <select id="disc-developer" style="width:100%">
+      <option value="">Select developer...</option>
+    </select>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div class="form-group">
+      <label>Standard rate (€/h)</label>
+      <input type="text" id="disc-standard-rate" readonly style="width:100%;background:var(--bg);color:var(--text-2)">
+    </div>
+    <div class="form-group">
+      <label>Discounted rate (€/h) *</label>
+      <input type="number" id="disc-rate" step="0.01" min="0" placeholder="e.g. 38.40" style="width:100%">
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div class="form-group">
+      <label>Start date *</label>
+      <input type="date" id="disc-start" style="width:100%">
+    </div>
+    <div class="form-group">
+      <label>End date <span style="color:var(--text-3)">(empty = active)</span></label>
+      <input type="date" id="disc-end" style="width:100%">
+    </div>
+  </div>
+  <div class="form-group" style="margin-bottom:1.25rem">
+    <label>Note</label>
+    <input type="text" id="disc-note" placeholder="e.g. PO50019236 discount" style="width:100%">
+  </div>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('discount-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDiscount()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="att-import-modal">
+<div class="modal" style="max-width:480px">
+  <h2>Import Attendance CSV</h2>
+  <div style="margin-bottom:1rem;font-size:13px;color:var(--text-2)">
+    Select the month and upload the CSV file exported from the attendance Excel.
+    Only hours &gt; 40 will be imported. Zero values are skipped (forecast kept).
+  </div>
+  <div class="form-group" style="margin-bottom:1rem">
+    <label>Month *</label>
+    <select id="att-import-month" style="width:100%">
+      <option value="">Select month...</option>
+      <option value="1">January</option><option value="2">February</option>
+      <option value="3">March</option><option value="4">April</option>
+      <option value="5">May</option><option value="6">June</option>
+      <option value="7">July</option><option value="8">August</option>
+      <option value="9">September</option><option value="10">October</option>
+      <option value="11">November</option><option value="12">December</option>
+    </select>
+  </div>
+  <div class="form-group" style="margin-bottom:1.25rem">
+    <label>CSV file *</label>
+    <input type="file" id="att-import-file" accept=".csv" style="width:100%;padding:6px 0">
+  </div>
+  <div class="modal-footer">
+    <div></div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('att-import-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="processAttImport()">Import</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="att-conflict-modal">
+<div class="modal" style="max-width:640px">
+  <h2>Confirm Overwrites</h2>
+  <div style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.6">
+    The following developers already have manual hours. Check the ones you want to overwrite with the CSV values.
+  </div>
+  <div class="table-wrap" style="max-height:350px;overflow-y:auto;margin-bottom:1rem">
+    <table style="width:100%">
+      <thead>
+        <tr>
+          <th style="width:40px;text-align:center">
+            <input type="checkbox" id="att-conflict-all" onchange="toggleAllConflicts(this.checked)" title="Select all">
+          </th>
+          <th>Developer</th>
+          <th style="text-align:right">Current hours</th>
+          <th style="text-align:right">CSV hours</th>
+        </tr>
+      </thead>
+      <tbody id="att-conflict-body"></tbody>
+    </table>
+  </div>
+  <div class="modal-footer">
+    <div style="font-size:12px;color:var(--text-2)">Unchecked = keep existing value</div>
+    <div class="modal-footer-right">
+      <button class="btn" onclick="closeModal('att-conflict-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAttImport()">Import selected</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="developers.js"></script>
+<script src="rates.js"></script>
+<script src="revenue.js"></script>
+<script src="grossmargin.js"></script>
+<script src="timesheets.js"></script>
+<script src="invoicing.js"></script>
+<script src="po.js"></script>
+<script src="attendance.js?v=2"></script>
+<script src="dashboard.js"></script>
+<script src="costs.js"></script>
+<script src="settings.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

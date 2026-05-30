@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice Email Preview</title>
+<style>
+body { font-family: Arial, sans-serif; font-size: 13px; margin: 0; background: #f0f2f5; }
+.header { background: #fff; padding: 16px 24px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; }
+.header h1 { margin: 0; font-size: 16px; font-weight: 600; flex: 1; }
+.btn { padding: 8px 18px; border-radius: 7px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
+.btn-primary { background: #2563EB; color: #fff; border-color: #2563EB; }
+.copy-hint { font-size:12px; color:#6B7280; margin-left:8px; }
+.preview { max-width: 900px; margin: 24px auto; background: #fff; border-radius: 10px; padding: 32px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); line-height: 1.6; }
+table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+th, td { border: 1px solid #ccc; padding: 6px 10px; }
+th { background: #f0f0f0; font-weight: 600; text-align: left; }
+.total-row td { background: #f0f0f0; font-weight: bold; }
+.error { padding: 2rem; color: #c00; text-align: center; font-size: 15px; }
+#copy-success { display:none; color:#3B6D11; font-size:12px; margin-left:8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 id="page-title">Invoice Email Preview</h1>
+  <button class="btn btn-primary" onclick="copyEmail()">&#128203; Copy to clipboard</button>
+  <span id="copy-success">✓ Copied!</span>
+  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn" onclick="window.close()">Close</button>
+</div>
+<div class="preview" id="preview"><p class="error">Loading data...</p></div>
+<script>
+var _html='';
+function fmt(v){return v.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR';}
+function buildRows(pg){
+  var gt=0,rows='';
+  Object.values(pg).forEach(function(grp){
+    gt+=grp.totalAmount;
+    var n=grp.rows.length;
+    grp.rows.forEach(function(row,ri){
+      var bg=ri%2!==0?'#f9f9f9':'#fff';
+      var aStyle='text-align:right'+(row.isDiscount?';color:#c00':'');
+      var aLabel=(row.isDiscount?'Discount ':'')+fmt(row.amount);
+      var fCell=row.isDiscount?'':(row.fileName||'');
+      if(ri===0){
+        rows+='<tr style="background:'+bg+'">';
+        rows+='<td rowspan="'+n+'">'+(grp.teams||['Self Hosting']).join(' + ')+'</td>';
+        rows+='<td rowspan="'+n+'" style="text-align:right;font-weight:500">'+fmt(grp.totalAmount)+'</td>';
+        rows+='<td rowspan="'+n+'">#'+grp.po+'</td>';
+        rows+='<td style="'+aStyle+'">'+aLabel+'</td>';
+        rows+='<td style="font-size:12px">'+fCell+'</td>';
+        rows+='</tr>';
+      } else {
+        rows+='<tr style="background:'+bg+'">';
+        rows+='<td style="'+aStyle+'">'+aLabel+'</td>';
+        rows+='<td style="font-size:12px">'+fCell+'</td>';
+        rows+='</tr>';
+      }
+    });
+  });
+  rows+='<tr style="background:#f0f0f0"><td style="font-weight:bold">Total</td><td style="text-align:right;font-weight:bold">'+fmt(gt)+'</td><td colspan="3"></td></tr>';
+  return rows;
+}
+function build(data){
+  var rows=buildRows(data.poGroups);
+  return '<p>Hi all,</p>'
+    +'<p>Please find the invoicing data for the Europe and India locations of the HERE project in the table below.<br>'
+    +'We kindly request to proceed with invoicing through Fiori approvals and Coupa.</p>'
+    +'<p>Kindly refer to the notes below, if applicable. Thanks a lot.</p><br>'
+    +'<table style="border-collapse:collapse;width:100%;font-size:13px">'
+    +'<thead><tr style="background:#f0f0f0">'
+    +'<th style="border:1px solid #ccc;padding:6px 10px">Project</th>'
+    +'<th style="border:1px solid #ccc;padding:6px 10px;text-align:right">Total EUR</th>'
+    +'<th style="border:1px solid #ccc;padding:6px 10px">PO number</th>'
+    +'<th style="border:1px solid #ccc;padding:6px 10px">Amount</th>'
+    +'<th style="border:1px solid #ccc;padding:6px 10px">Attachments</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table><br>'
+    +'<p>Here are some notes:</p><br>'
+    +'<p>Thanks a lot.</p><p>Kind regards,<br>Rasto &amp; Manish</p>';
+}
+function copyEmail(){
+  var el = document.getElementById('preview');
+  var range = document.createRange();
+  range.selectNodeContents(el);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  var s = document.getElementById('copy-success');
+  s.style.display = 'inline';
+  setTimeout(function(){ s.style.display = 'none'; }, 2500);
+}
+window.addEventListener('load',function(){
+  var raw=localStorage.getItem('invEmailData');
+  if(!raw){document.getElementById('preview').innerHTML='<p class="error">No data found. Please open from Invoicing module.</p>';return;}
+  try{
+    var data=JSON.parse(raw);
+    _html=build(data);
+    document.getElementById('page-title').textContent='Invoice Email - '+data.monthNameFull+' '+data.year;
+    document.getElementById('preview').innerHTML=_html;
+  }catch(e){document.getElementById('preview').innerHTML='<p class="error">Error: '+e.message+'</p>';}
+});
+</script>
+</body>
+</html>
